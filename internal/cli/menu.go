@@ -32,6 +32,7 @@ var menuEntries = []menuEntry{
 	{"🔑", "SSH Manager", "Quản lý SSH host, kết nối, test connection", "ssh"},
 	{"📋", "Env Sync", "So sánh, đồng bộ, validate file .env", "env"},
 	{"⚙️ ", "Nginx Generator", "Tạo config nginx từ template", "nginx"},
+	{"🌐", "Web Dashboard", "Mở dashboard trên trình duyệt", "dashboard"},
 }
 
 // showMenuAndExecute displays a numbered menu and re-executes idops with selected command.
@@ -48,7 +49,7 @@ func showMenuAndExecute() error {
 	}
 
 	fmt.Println()
-	fmt.Print(menuDesc.Render("  Select [1-5] or q to quit: "))
+	fmt.Print(menuDesc.Render(fmt.Sprintf("  Select [1-%d] or q to quit: ", len(menuEntries))))
 
 	reader := bufio.NewReader(os.Stdin)
 	input, _ := reader.ReadString('\n')

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -53,6 +54,14 @@ var nginxListCmd = &cobra.Command{
 			fmt.Println("No configs found")
 			return nil
 		}
+
+		jsonFlag, _ := cmd.Flags().GetBool("json")
+		if jsonFlag {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(configs)
+		}
+
 		for _, c := range configs {
 			fmt.Printf("  %s\n", c)
 		}
@@ -63,7 +72,9 @@ var nginxListCmd = &cobra.Command{
 func init() {
 	nginxApplyCmd.Flags().String("sites-enabled", "/etc/nginx/sites-enabled", "sites-enabled directory")
 	nginxListCmd.Flags().String("dir", "/etc/nginx/sites-available", "config directory")
+	nginxListCmd.Flags().Bool("json", false, "Output as JSON")
 	nginxCmd.Flags().String("output", "", "output file path (default: stdout/preview)")
+	nginxCmd.Flags().Bool("json", false, "Output generated config as JSON")
 
 	nginxCmd.AddCommand(nginxValidateCmd, nginxApplyCmd, nginxListCmd)
 	rootCmd.AddCommand(nginxCmd)

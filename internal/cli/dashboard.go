@@ -1,0 +1,178 @@
+package cli
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"os/exec"
+	"os/signal"
+	"path/filepath"
+	"runtime"
+	"syscall"
+	"time"
+
+	"github.com/spf13/cobra"
+)
+
+var dashboardPort string
+var dashboardNoOpen bool
+
+var dashboardCmd = &cobra.Command{
+	Use:   "dashboard",
+	Short: "Launch the web dashboard",
+	Long:  `Start the Next.js dashboard server and open it in your browser.`,
+	RunE:  runDashboard,
+}
+
+func init() {
+	dashboardCmd.Flags().StringVarP(&dashboardPort, "port", "p", "3000", "Port to run dashboard on")
+	dashboardCmd.Flags().BoolVar(&dashboardNoOpen, "no-open", false, "Don't open browser automatically")
+	rootCmd.AddCommand(dashboardCmd)
+}
+
+func runDashboard(cmd *cobra.Command, args []string) error {
+	// Find dashboard directory
+	execPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("cannot get executable path: %w", err)
+	}
+	execDir := filepath.Dir(execPath)
+
+	// Try multiple locations for dashboard
+	possiblePaths := []string{
+		filepath.Join(execDir, "dashboard"),
+		filepath.Join(execDir, "..", "dashboard"),
+		filepath.Join(execDir, "..", "..", "dashboard"),
+		"./dashboard",
+		"../dashboard",
+	}
+
+	var dashboardPath string
+	for _, path := range possiblePaths {
+		if _, err := os.Stat(filepath.Join(path, "package.json")); err == nil {
+			dashboardPath = path
+			break
+		}
+	}
+
+	if dashboardPath == "" {
+		return fmt.Errorf("dashboard not found. Please ensure the dashboard is built and available")
+	}
+
+	green := "\033[32;1m"
+	cyan := "\033[36m"
+	yellow := "\033[33m"
+	reset := "\033[0m"
+
+	fmt.Printf("%s🚀 Starting idops dashboard...%s\n", green, reset)
+	fmt.Println()
+
+	// Check if npm is available
+	if _, err := exec.LookPath("npm"); err != nil {
+		return fmt.Errorf("npm not found in PATH. Please install Node.js")
+	}
+
+	// Start Next.js dev server
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle Ctrl+C gracefully
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		fmt.Println()
+		fmt.Printf("%s⚡ Shutting down dashboard...%s\n", yellow, reset)
+		cancel()
+	}()
+
+	// Run npm run dev
+	npmCmd := exec.CommandContext(ctx, "npm", "run", "dev", "--", "-p", dashboardPort)
+	npmCmd.Dir = dashboardPath
+	npmCmd.Stdout = os.Stdout
+	npmCmd.Stderr = os.Stderr
+	npmCmd.Env = append(os.Environ(), "IDOPS_CLI_PATH="+execPath)
+
+	// Wait for server to be ready
+	serverURL := fmt.Sprintf("http://localhost:%s", dashboardPort)
+	ready := make(chan bool)
+
+	go func() {
+		// Poll for server readiness
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+		timeout := time.After(30 * time.Second)
+
+		for {
+			select {
+			case <-ticker.C:
+				resp, err := http.Get(serverURL)
+				if err == nil {
+					resp.Body.Close()
+					if resp.StatusCode == 200 {
+						ready <- true
+						return
+					}
+				}
+			case <-timeout:
+				ready <- false
+				return
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// Start server in background
+	go func() {
+		if err := npmCmd.Run(); err != nil && ctx.Err() == nil {
+			fmt.Fprintf(os.Stderr, "Dashboard server error: %v\n", err)
+		}
+	}()
+
+	// Wait for server to be ready
+	fmt.Printf("⏳ Waiting for dashboard to start on port %s...\n", dashboardPort)
+
+	select {
+	case success := <-ready:
+		if !success {
+			return fmt.Errorf("dashboard failed to start within 30 seconds")
+		}
+	case <-ctx.Done():
+		return nil
+	}
+
+	fmt.Println()
+	fmt.Printf("%s✅ Dashboard is ready!%s\n", green, reset)
+	fmt.Printf("%s🌐 Dashboard URL: %s%s\n", cyan, serverURL, reset)
+	fmt.Println()
+
+	// Open browser
+	if !dashboardNoOpen {
+		fmt.Println("🖥️  Opening browser...")
+		if err := openBrowser(serverURL); err != nil {
+			fmt.Printf("%s⚠️  Could not open browser: %v%s\n", yellow, err, reset)
+			fmt.Printf("%sPlease open the URL manually%s\n", yellow, reset)
+		}
+	}
+
+	fmt.Println()
+	fmt.Println("Press Ctrl+C to stop the dashboard")
+	fmt.Println()
+
+	// Wait for interrupt
+	<-ctx.Done()
+	return nil
+}
+
+func openBrowser(url string) error {
+	switch runtime.GOOS {
+	case "windows":
+		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		return exec.Command("open", url).Start()
+	default: // linux and others
+		return exec.Command("xdg-open", url).Start()
+	}
+}

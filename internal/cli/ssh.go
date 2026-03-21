@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -14,12 +15,18 @@ import (
 	internalssh "github.com/nhh0718/idops/internal/ssh"
 )
 
+var sshJSON bool
+
 func init() {
 	rootCmd.AddCommand(sshCmd)
 	sshCmd.AddCommand(sshConnectCmd)
 	sshCmd.AddCommand(sshTestCmd)
 	sshCmd.AddCommand(sshExportCmd)
 	sshCmd.AddCommand(sshImportCmd)
+	sshCmd.AddCommand(sshListCmd)
+
+	sshCmd.Flags().BoolVar(&sshJSON, "json", false, "Output SSH hosts as JSON")
+	sshTestCmd.Flags().Bool("json", false, "Output test results as JSON")
 }
 
 var sshCmd = &cobra.Command{
@@ -27,6 +34,17 @@ var sshCmd = &cobra.Command{
 	Short: "Manage SSH hosts via TUI",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		path := defaultSSHConfigPath()
+		hosts, err := internalssh.LoadConfig(path)
+		if err != nil {
+			return fmt.Errorf("loading ssh config: %w", err)
+		}
+
+		if sshJSON {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(hosts)
+		}
+
 		model, err := internalssh.NewTUIModel(path)
 		if err != nil {
 			return fmt.Errorf("loading ssh config: %w", err)
@@ -78,6 +96,14 @@ var sshTestCmd = &cobra.Command{
 			hosts = filtered
 		}
 		results := internalssh.TestAllConnections(hosts, internalssh.DefaultTimeout)
+
+		jsonFlag, _ := cmd.Flags().GetBool("json")
+		if jsonFlag {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(results)
+		}
+
 		for _, r := range results {
 			if r.Success {
 				fmt.Printf("  [OK]  %-20s  %v\n", r.Host.Name, r.Latency.Round(1))
@@ -125,6 +151,29 @@ var sshImportCmd = &cobra.Command{
 			}
 		}
 		fmt.Printf("Imported %d host(s) into %s\n", len(hosts), destPath)
+		return nil
+	},
+}
+
+var sshListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all SSH hosts",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		hosts, err := internalssh.LoadConfig(defaultSSHConfigPath())
+		if err != nil {
+			return err
+		}
+		if len(hosts) == 0 {
+			fmt.Println("No hosts found")
+			return nil
+		}
+		for _, h := range hosts {
+			fmt.Printf("  %s -> %s@%s", h.Name, h.User, h.Hostname)
+			if h.Port != "" && h.Port != "22" {
+				fmt.Printf(":%s", h.Port)
+			}
+			fmt.Println()
+		}
 		return nil
 	},
 }
