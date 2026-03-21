@@ -62,9 +62,9 @@ func (m TUIModel) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m TUIModel) renderForm() string {
-	title := "Add Host"
+	title := "➕ Thêm SSH Host"
 	if m.mode == modeEdit {
-		title = "Edit Host"
+		title = "✏️  Sửa SSH Host"
 	}
 
 	var sb strings.Builder
@@ -79,7 +79,7 @@ func (m TUIModel) renderForm() string {
 		sb.WriteString("\n" + lipglossv1.NewStyle().Foreground(lipglossv1.Color("#EF4444")).Render(m.status))
 	}
 	sb.WriteString("\n" + lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).
-		Render("tab/enter next  shift+tab prev  esc cancel"))
+		Render("  Tab/Enter: tiếp  Shift+Tab: quay lại  Esc: hủy"))
 	return sb.String()
 }
 

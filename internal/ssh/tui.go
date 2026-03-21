@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -41,25 +40,32 @@ type hostItem struct {
 }
 
 func (h hostItem) Title() string {
-	indicator := ""
+	name := h.host.Name
 	if h.testResult != nil {
 		if h.testResult.Success {
-			indicator = "  ✓"
+			name += "  ✓ OK"
 		} else {
-			indicator = "  ✗"
+			name += "  ✗ FAIL"
 		}
 	}
-	return h.host.Name + indicator
+	return name
 }
 
 func (h hostItem) Description() string {
-	return fmt.Sprintf("%s@%s:%s", orDash(h.host.User), orDash(h.host.Hostname), orDefault(h.host.Port, "22"))
+	user := orDash(h.host.User)
+	host := orDash(h.host.Hostname)
+	port := orDefault(h.host.Port, "22")
+	desc := fmt.Sprintf("  Host: %s  |  User: %s  |  Port: %s", host, user, port)
+	if h.host.IdentityFile != "" {
+		desc += fmt.Sprintf("  |  Key: %s", h.host.IdentityFile)
+	}
+	return desc
 }
 
 func (h hostItem) FilterValue() string { return h.host.Name }
 
 // formField labels for add/edit.
-var formFields = []string{"Name", "Hostname", "Port", "User", "IdentityFile", "ProxyJump"}
+var formFields = []string{"Tên host", "Địa chỉ (IP/domain)", "Port", "User", "Key file", "ProxyJump"}
 
 // TUIModel is the root Bubble Tea model for the SSH manager.
 type TUIModel struct {
@@ -89,7 +95,7 @@ func NewTUIModel(configPath string) (TUIModel, error) {
 		Background(lipglossv1.Color("#7C3AED"))
 
 	l := list.New(hostsToItems(hosts, nil), delegate, 80, 20)
-	l.Title = "SSH Manager"
+	l.Title = "🔑 SSH Manager - Quản lý kết nối SSH"
 	l.Styles.Title = lipglossv1.NewStyle().Bold(true).Foreground(lipglossv1.Color("#7C3AED"))
 
 	return TUIModel{
@@ -208,86 +214,4 @@ func (m TUIModel) updateConfirm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m TUIModel) View() string {
-	switch m.mode {
-	case modeAdd, modeEdit:
-		return m.renderForm()
-	case modeConfirmDelete:
-		sel, _ := m.list.SelectedItem().(hostItem)
-		h := sel.host
-		prompt := fmt.Sprintf("\nDelete %s (%s@%s:%s)? [y/N] ",
-			h.Name, orDash(h.User), orDash(h.Hostname), orDefault(h.Port, "22"))
-		return lipglossv1.NewStyle().Bold(true).Foreground(lipglossv1.Color("#EF4444")).Render(prompt)
-	default:
-		return m.renderList()
-	}
-}
 
-func (m TUIModel) renderList() string {
-	var sb strings.Builder
-
-	// Empty state
-	if len(m.list.Items()) == 0 {
-		sb.WriteString(lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).
-			Render("\n  No SSH hosts found in config\n"))
-	} else {
-		sb.WriteString(m.list.View())
-	}
-
-	if m.status != "" {
-		sb.WriteString("\n" + lipglossv1.NewStyle().Foreground(lipglossv1.Color("#10B981")).Render(m.status))
-	}
-	sb.WriteString("\n" + lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).
-		Render("a add  e edit  d delete  c connect  t test  q quit"))
-	return sb.String()
-}
-
-// --- helpers ---
-
-func hostsToItems(hosts []SSHHost, results map[string]TestResult) []list.Item {
-	items := make([]list.Item, len(hosts))
-	for i, h := range hosts {
-		item := hostItem{host: h}
-		if results != nil {
-			if r, ok := results[h.Name]; ok {
-				r := r // capture
-				item.testResult = &r
-			}
-		}
-		items[i] = item
-	}
-	return items
-}
-
-func (m TUIModel) currentHosts() []SSHHost {
-	items := m.list.Items()
-	hosts := make([]SSHHost, 0, len(items))
-	for _, it := range items {
-		if h, ok := it.(hostItem); ok {
-			hosts = append(hosts, h.host)
-		}
-	}
-	return hosts
-}
-
-func (m TUIModel) reloadItemsWithResults() []list.Item {
-	hosts, err := LoadConfig(m.configPath)
-	if err != nil {
-		return m.list.Items()
-	}
-	return hostsToItems(hosts, m.testResults)
-}
-
-func orDash(s string) string {
-	if s == "" {
-		return "-"
-	}
-	return s
-}
-
-func orDefault(s, def string) string {
-	if s == "" {
-		return def
-	}
-	return s
-}

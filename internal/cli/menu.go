@@ -27,11 +27,11 @@ type menuEntry struct {
 }
 
 var menuEntries = []menuEntry{
-	{"🔍", "Port Scanner", "Scan ports, kill processes, watch mode", "ports"},
-	{"🐳", "Docker Dashboard", "Container stats, start/stop/restart, logs", "docker"},
-	{"🔑", "SSH Manager", "Manage SSH hosts, connect, test connections", "ssh"},
-	{"📋", "Env Sync", "Compare, sync, validate .env files", "env"},
-	{"⚙️ ", "Nginx Generator", "Generate nginx configs from templates", "nginx"},
+	{"🔍", "Port Scanner", "Quét port, kill process, theo dõi realtime", "ports"},
+	{"🐳", "Docker Dashboard", "Quản lý container, start/stop/restart, xem logs", "docker"},
+	{"🔑", "SSH Manager", "Quản lý SSH host, kết nối, test connection", "ssh"},
+	{"📋", "Env Sync", "So sánh, đồng bộ, validate file .env", "env"},
+	{"⚙️ ", "Nginx Generator", "Tạo config nginx từ template", "nginx"},
 }
 
 // showMenuAndExecute displays a numbered menu and re-executes idops with selected command.

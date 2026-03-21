@@ -13,6 +13,7 @@ import (
 var envCmd = &cobra.Command{
 	Use:   "env",
 	Short: "Environment file manager",
+	RunE:  runEnvMenu,
 }
 
 var envCompareCmd = &cobra.Command{
