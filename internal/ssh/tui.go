@@ -2,7 +2,10 @@ package ssh
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -20,11 +23,39 @@ const (
 	modeConfirmDelete
 )
 
-// hostItem implements list.Item for SSHHost.
-type hostItem struct{ host SSHHost }
+// clearStatusMsg signals the status bar should be cleared.
+type clearStatusMsg struct{}
 
-func (h hostItem) Title() string       { return h.host.Name }
-func (h hostItem) Description() string { return fmt.Sprintf("%s@%s:%s", orDash(h.host.User), orDash(h.host.Hostname), orDefault(h.host.Port, "22")) }
+// connectDoneMsg carries the result of a connect re-exec.
+type connectDoneMsg struct{ err error }
+
+// clearStatusAfter returns a Cmd that fires clearStatusMsg after d.
+func clearStatusAfter(d time.Duration) tea.Cmd {
+	return tea.Tick(d, func(time.Time) tea.Msg { return clearStatusMsg{} })
+}
+
+// hostItem implements list.Item for SSHHost.
+type hostItem struct {
+	host       SSHHost
+	testResult *TestResult // nil = untested
+}
+
+func (h hostItem) Title() string {
+	indicator := ""
+	if h.testResult != nil {
+		if h.testResult.Success {
+			indicator = "  ✓"
+		} else {
+			indicator = "  ✗"
+		}
+	}
+	return h.host.Name + indicator
+}
+
+func (h hostItem) Description() string {
+	return fmt.Sprintf("%s@%s:%s", orDash(h.host.User), orDash(h.host.Hostname), orDefault(h.host.Port, "22"))
+}
+
 func (h hostItem) FilterValue() string { return h.host.Name }
 
 // formField labels for add/edit.
@@ -49,7 +80,6 @@ func NewTUIModel(configPath string) (TUIModel, error) {
 		return TUIModel{}, err
 	}
 
-	items := hostsToItems(hosts)
 	delegate := list.NewDefaultDelegate()
 	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
 		Foreground(lipglossv1.Color("#FFFFFF")).
@@ -58,7 +88,7 @@ func NewTUIModel(configPath string) (TUIModel, error) {
 		Foreground(lipglossv1.Color("#D1D5DB")).
 		Background(lipglossv1.Color("#7C3AED"))
 
-	l := list.New(items, delegate, 80, 20)
+	l := list.New(hostsToItems(hosts, nil), delegate, 80, 20)
 	l.Title = "SSH Manager"
 	l.Styles.Title = lipglossv1.NewStyle().Bold(true).Foreground(lipglossv1.Color("#7C3AED"))
 
@@ -72,6 +102,13 @@ func NewTUIModel(configPath string) (TUIModel, error) {
 func (m TUIModel) Init() tea.Cmd { return nil }
 
 func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Global messages handled regardless of mode.
+	switch msg.(type) {
+	case clearStatusMsg:
+		m.status = ""
+		return m, nil
+	}
+
 	switch m.mode {
 	case modeAdd, modeEdit:
 		return m.updateForm(msg)
@@ -84,16 +121,26 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m TUIModel) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case connectDoneMsg:
+		if msg.err != nil {
+			m.status = "Connect error: " + msg.err.Error()
+		} else {
+			m.status = "Session ended"
+		}
+		return m, clearStatusAfter(3 * time.Second)
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
+
 		case "a":
 			m.mode = modeAdd
 			m.inputs = makeInputs(SSHHost{})
 			m.focusIdx = 0
 			m.inputs[0].Focus()
 			return m, nil
+
 		case "e":
 			if sel, ok := m.list.SelectedItem().(hostItem); ok {
 				m.mode = modeEdit
@@ -103,11 +150,26 @@ func (m TUIModel) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.inputs[0].Focus()
 			}
 			return m, nil
+
 		case "d":
 			if _, ok := m.list.SelectedItem().(hostItem); ok {
 				m.mode = modeConfirmDelete
 			}
 			return m, nil
+
+		case "c":
+			if sel, ok := m.list.SelectedItem().(hostItem); ok {
+				execPath, _ := os.Executable()
+				cmd := exec.Command(execPath, "ssh", "connect", sel.host.Name)
+				cmd.Stdin = os.Stdin
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				return m, tea.ExecProcess(cmd, func(err error) tea.Msg {
+					return connectDoneMsg{err}
+				})
+			}
+			return m, nil
+
 		case "t":
 			hosts := m.currentHosts()
 			results := TestAllConnections(hosts, defaultTimeout)
@@ -115,9 +177,11 @@ func (m TUIModel) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.testResults[r.Host.Name] = r
 			}
 			m.status = fmt.Sprintf("Tested %d host(s)", len(results))
-			return m, nil
+			m.list.SetItems(m.reloadItemsWithResults())
+			return m, clearStatusAfter(3 * time.Second)
 		}
 	}
+
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
 	return m, cmd
@@ -132,58 +196,16 @@ func (m TUIModel) updateConfirm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.status = "Delete failed: " + err.Error()
 				} else {
 					m.status = "Deleted " + sel.host.Name
-					m.list.SetItems(m.reloadItems())
+					m.list.SetItems(m.reloadItemsWithResults())
 				}
 			}
 			m.mode = modeList
+			return m, clearStatusAfter(3 * time.Second)
 		case "n", "N", "esc":
 			m.mode = modeList
 		}
 	}
 	return m, nil
-}
-
-func (m TUIModel) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if key, ok := msg.(tea.KeyMsg); ok {
-		switch key.String() {
-		case "esc":
-			m.mode = modeList
-			return m, nil
-		case "enter", "tab":
-			if m.focusIdx < len(m.inputs)-1 {
-				m.inputs[m.focusIdx].Blur()
-				m.focusIdx++
-				m.inputs[m.focusIdx].Focus()
-				return m, nil
-			}
-			// Save
-			host := inputsToHost(m.inputs)
-			var err error
-			if m.mode == modeEdit {
-				err = UpdateHost(m.configPath, m.editingName, host)
-			} else {
-				err = AddHost(m.configPath, host)
-			}
-			if err != nil {
-				m.status = "Save failed: " + err.Error()
-			} else {
-				m.status = "Saved " + host.Name
-				m.list.SetItems(m.reloadItems())
-			}
-			m.mode = modeList
-			return m, nil
-		case "shift+tab":
-			if m.focusIdx > 0 {
-				m.inputs[m.focusIdx].Blur()
-				m.focusIdx--
-				m.inputs[m.focusIdx].Focus()
-			}
-			return m, nil
-		}
-	}
-	var cmd tea.Cmd
-	m.inputs[m.focusIdx], cmd = m.inputs[m.focusIdx].Update(msg)
-	return m, cmd
 }
 
 func (m TUIModel) View() string {
@@ -192,7 +214,10 @@ func (m TUIModel) View() string {
 		return m.renderForm()
 	case modeConfirmDelete:
 		sel, _ := m.list.SelectedItem().(hostItem)
-		return fmt.Sprintf("\nDelete host %q? [y/N] ", sel.host.Name)
+		h := sel.host
+		prompt := fmt.Sprintf("\nDelete %s (%s@%s:%s)? [y/N] ",
+			h.Name, orDash(h.User), orDash(h.Hostname), orDefault(h.Port, "22"))
+		return lipglossv1.NewStyle().Bold(true).Foreground(lipglossv1.Color("#EF4444")).Render(prompt)
 	default:
 		return m.renderList()
 	}
@@ -200,58 +225,36 @@ func (m TUIModel) View() string {
 
 func (m TUIModel) renderList() string {
 	var sb strings.Builder
-	sb.WriteString(m.list.View())
+
+	// Empty state
+	if len(m.list.Items()) == 0 {
+		sb.WriteString(lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).
+			Render("\n  No SSH hosts found in config\n"))
+	} else {
+		sb.WriteString(m.list.View())
+	}
+
 	if m.status != "" {
 		sb.WriteString("\n" + lipglossv1.NewStyle().Foreground(lipglossv1.Color("#10B981")).Render(m.status))
 	}
-	sb.WriteString("\n" + lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).Render("a add  e edit  d del  t test  q quit"))
-	return sb.String()
-}
-
-func (m TUIModel) renderForm() string {
-	title := "Add Host"
-	if m.mode == modeEdit {
-		title = "Edit Host"
-	}
-	var sb strings.Builder
-	sb.WriteString(lipglossv1.NewStyle().Bold(true).Foreground(lipglossv1.Color("#7C3AED")).Render(title) + "\n\n")
-	for i, inp := range m.inputs {
-		sb.WriteString(lipglossv1.NewStyle().Bold(i == m.focusIdx).Render(formFields[i]+": ") + inp.View() + "\n")
-	}
-	sb.WriteString("\n" + lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).Render("tab/enter next  shift+tab prev  esc cancel"))
+	sb.WriteString("\n" + lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).
+		Render("a add  e edit  d delete  c connect  t test  q quit"))
 	return sb.String()
 }
 
 // --- helpers ---
 
-func makeInputs(h SSHHost) []textinput.Model {
-	vals := []string{h.Name, h.Hostname, h.Port, h.User, h.IdentityFile, h.ProxyJump}
-	inputs := make([]textinput.Model, len(formFields))
-	for i, label := range formFields {
-		t := textinput.New()
-		t.Placeholder = label
-		t.SetValue(vals[i])
-		inputs[i] = t
-	}
-	return inputs
-}
-
-func inputsToHost(inputs []textinput.Model) SSHHost {
-	return SSHHost{
-		Name:         inputs[0].Value(),
-		Hostname:     inputs[1].Value(),
-		Port:         inputs[2].Value(),
-		User:         inputs[3].Value(),
-		IdentityFile: inputs[4].Value(),
-		ProxyJump:    inputs[5].Value(),
-		Options:      make(map[string]string),
-	}
-}
-
-func hostsToItems(hosts []SSHHost) []list.Item {
+func hostsToItems(hosts []SSHHost, results map[string]TestResult) []list.Item {
 	items := make([]list.Item, len(hosts))
 	for i, h := range hosts {
-		items[i] = hostItem{h}
+		item := hostItem{host: h}
+		if results != nil {
+			if r, ok := results[h.Name]; ok {
+				r := r // capture
+				item.testResult = &r
+			}
+		}
+		items[i] = item
 	}
 	return items
 }
@@ -267,12 +270,12 @@ func (m TUIModel) currentHosts() []SSHHost {
 	return hosts
 }
 
-func (m TUIModel) reloadItems() []list.Item {
+func (m TUIModel) reloadItemsWithResults() []list.Item {
 	hosts, err := LoadConfig(m.configPath)
 	if err != nil {
 		return m.list.Items()
 	}
-	return hostsToItems(hosts)
+	return hostsToItems(hosts, m.testResults)
 }
 
 func orDash(s string) string {

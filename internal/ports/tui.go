@@ -12,39 +12,40 @@ import (
 	lipglossv1 "github.com/charmbracelet/lipgloss"
 )
 
-// refreshMsg is sent on watch-mode tick or manual refresh.
 type refreshMsg struct{ infos []PortInfo }
-
-// errMsg carries a scan error back to the model.
 type errMsg struct{ err error }
+type tickMsg time.Time
+type clearStatusMsg struct{}
 
 // TUIModel is the Bubble Tea model for the ports TUI.
 type TUIModel struct {
-	table      table.Model
-	filter     textinput.Model
-	infos      []PortInfo   // full unfiltered dataset
-	filtered   []PortInfo   // current filtered+sorted dataset (for actions)
-	opts       ScanOptions  // scan options (protocol, port range)
-	sortField  SortField
-	watchMode  bool
-	interval   time.Duration
-	filtering  bool  // whether filter input is active
-	confirm    bool  // kill confirmation mode
-	lastErr    string
-	statusMsg  string
-	width      int
-	height     int
+	table     table.Model
+	filter    textinput.Model
+	infos     []PortInfo
+	filtered  []PortInfo
+	opts      ScanOptions
+	sortField SortField
+	watchMode bool
+	interval  time.Duration
+	filtering bool
+	confirm   bool
+	lastErr   string
+	statusMsg string
+	statusErr bool // true = error style, false = success style
+	lastScan  time.Time
+	width     int
+	height    int
 }
 
 var sortLabels = []string{"Port", "PID", "Process", "Protocol"}
 
-// NewTUIModel initialises the model. Call tea.NewProgram(model).Run() to start.
+// NewTUIModel initialises the model.
 func NewTUIModel(opts ScanOptions, watchMode bool, interval time.Duration) TUIModel {
 	fi := textinput.New()
 	fi.Placeholder = "filter process or port..."
 	fi.CharLimit = 64
 
-	m := TUIModel{
+	return TUIModel{
 		filter:    fi,
 		opts:      opts,
 		sortField: SortByPort,
@@ -53,80 +54,100 @@ func NewTUIModel(opts ScanOptions, watchMode bool, interval time.Duration) TUIMo
 		width:     100,
 		height:    24,
 	}
-	m.table = newPortsTable(nil, m.width)
-	return m
 }
 
-// Init performs the first scan and, in watch mode, starts the tick.
 func (m TUIModel) Init() tea.Cmd {
 	return tea.Batch(doScan(m.opts), tea.EnterAltScreen)
 }
 
-// Update handles messages and key events.
 func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.table = newPortsTable(m.visibleRows(), m.width)
+		m.rebuildTable()
 		return m, nil
 
 	case refreshMsg:
 		m.infos = msg.infos
 		m.lastErr = ""
+		m.lastScan = time.Now()
 		m.rebuildTable()
 		if m.watchMode {
-			return m, tea.Tick(m.interval, func(t time.Time) tea.Msg {
-				return tickMsg(t)
-			})
+			return m, tea.Tick(m.interval, func(t time.Time) tea.Msg { return tickMsg(t) })
 		}
 		return m, nil
 
 	case errMsg:
 		m.lastErr = msg.err.Error()
+		// Keep ticking even on error
+		if m.watchMode {
+			return m, tea.Tick(m.interval, func(t time.Time) tea.Msg { return tickMsg(t) })
+		}
 		return m, nil
 
 	case tickMsg:
 		return m, doScan(m.opts)
 
+	case clearStatusMsg:
+		if !m.confirm {
+			m.statusMsg = ""
+			m.statusErr = false
+		}
+		return m, nil
+
 	case tea.KeyMsg:
-		// Delegate keys to filter input when active.
+		if m.confirm {
+			return m.handleConfirm(msg)
+		}
 		if m.filtering {
 			return m.handleFilterKey(msg)
 		}
 		return m.handleKey(msg)
 	}
 
-	// Pass through to table when not filtering.
 	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
 	return m, cmd
 }
 
-type tickMsg time.Time
+// clearStatusAfter returns a command that clears status after delay.
+func clearStatusAfter(d time.Duration) tea.Cmd {
+	return tea.Tick(d, func(t time.Time) tea.Msg { return clearStatusMsg{} })
+}
+
+func (m *TUIModel) setStatus(msg string, isErr bool) tea.Cmd {
+	m.statusMsg = msg
+	m.statusErr = isErr
+	if isErr {
+		return clearStatusAfter(5 * time.Second)
+	}
+	return clearStatusAfter(3 * time.Second)
+}
+
+func (m TUIModel) handleConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y":
+		m.confirm = false
+		selected := m.selectedPort()
+		if selected != nil {
+			if err := KillProcess(selected.PID); err != nil {
+				cmd := m.setStatus("Kill failed: "+err.Error(), true)
+				return m, cmd
+			}
+			cmd := m.setStatus(
+				fmt.Sprintf("Killed %s (PID %d) on port %d", selected.ProcessName, selected.PID, selected.LocalPort),
+				false,
+			)
+			return m, tea.Batch(cmd, doScan(m.opts))
+		}
+	default:
+		m.confirm = false
+		m.statusMsg = ""
+	}
+	return m, nil
+}
 
 func (m TUIModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Kill confirmation mode
-	if m.confirm {
-		switch msg.String() {
-		case "y", "Y":
-			m.confirm = false
-			selected := m.selectedPort()
-			if selected != nil {
-				if err := KillProcess(selected.PID); err != nil {
-					m.statusMsg = "Kill failed: " + err.Error()
-				} else {
-					m.statusMsg = fmt.Sprintf("Killed %s (PID %d) on port %d", selected.ProcessName, selected.PID, selected.LocalPort)
-				}
-				return m, doScan(m.opts) // refresh after kill
-			}
-		default:
-			m.confirm = false
-			m.statusMsg = ""
-		}
-		return m, nil
-	}
-
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
@@ -139,19 +160,24 @@ func (m TUIModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "r":
 		return m, doScan(m.opts)
 	case "k":
-		// Kill selected process
 		selected := m.selectedPort()
 		if selected != nil && selected.PID > 0 {
 			m.confirm = true
 			m.statusMsg = fmt.Sprintf("Kill %s (PID %d) on port %d? [y/N]", selected.ProcessName, selected.PID, selected.LocalPort)
+		} else {
+			cmd := m.setStatus("No process selected or PID unavailable", true)
+			return m, cmd
 		}
 		return m, nil
 	case "o":
-		// Open in browser
 		selected := m.selectedPort()
 		if selected != nil {
-			_ = OpenInBrowser(selected.LocalPort)
-			m.statusMsg = fmt.Sprintf("Opened http://localhost:%d", selected.LocalPort)
+			if err := OpenInBrowser(selected.LocalPort); err != nil {
+				cmd := m.setStatus("Browser failed: "+err.Error(), true)
+				return m, cmd
+			}
+			cmd := m.setStatus(fmt.Sprintf("Opened http://localhost:%d", selected.LocalPort), false)
+			return m, cmd
 		}
 		return m, nil
 	}
@@ -178,18 +204,26 @@ func (m TUIModel) handleFilterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m TUIModel) View() string {
 	var sb strings.Builder
 
-	// Title bar.
+	// Title bar with stats
 	title := lipglossv1.NewStyle().Bold(true).Foreground(lipglossv1.Color("#7C3AED")).Render("idops ports")
 	sortInfo := lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).
 		Render(fmt.Sprintf("  sort: %s", sortLabels[m.sortField]))
+	stats := lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).
+		Render(fmt.Sprintf("  [%d ports", len(m.filtered)))
+	if len(m.filtered) != len(m.infos) {
+		stats += lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).
+			Render(fmt.Sprintf("/%d total", len(m.infos)))
+	}
+	stats += lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).Render("]")
+
 	watchInfo := ""
 	if m.watchMode {
 		watchInfo = lipglossv1.NewStyle().Foreground(lipglossv1.Color("#10B981")).
-			Render(fmt.Sprintf("  watch: %s", m.interval))
+			Render(fmt.Sprintf("  WATCH %s", m.interval))
 	}
-	sb.WriteString(title + sortInfo + watchInfo + "\n")
+	sb.WriteString(title + sortInfo + stats + watchInfo + "\n")
 
-	// Filter bar.
+	// Filter bar
 	if m.filtering {
 		sb.WriteString(lipglossv1.NewStyle().Foreground(lipglossv1.Color("#3B82F6")).Render("/") + " " + m.filter.View() + "\n")
 	} else if m.filter.Value() != "" {
@@ -197,34 +231,39 @@ func (m TUIModel) View() string {
 			Render(fmt.Sprintf("filter: %q  (press / to change)", m.filter.Value())) + "\n")
 	}
 
-	// Error line.
+	// Error line
 	if m.lastErr != "" {
 		sb.WriteString(lipglossv1.NewStyle().Foreground(lipglossv1.Color("#EF4444")).
 			Render("error: "+m.lastErr) + "\n")
 	}
 
-	sb.WriteString(m.table.View() + "\n")
-
-	// Status message
-	if m.statusMsg != "" {
-		if m.confirm {
-			sb.WriteString(lipglossv1.NewStyle().Foreground(lipglossv1.Color("#F59E0B")).Bold(true).
-				Render(m.statusMsg) + "\n")
-		} else {
-			sb.WriteString(lipglossv1.NewStyle().Foreground(lipglossv1.Color("#10B981")).
-				Render(m.statusMsg) + "\n")
-		}
+	// Empty state
+	if len(m.infos) == 0 && m.lastErr == "" && !m.lastScan.IsZero() {
+		sb.WriteString(lipglossv1.NewStyle().Foreground(lipglossv1.Color("#F59E0B")).
+			Render("\n  No listening ports found.\n  Try running with elevated privileges for full results.\n") + "\n")
+	} else {
+		sb.WriteString(m.table.View() + "\n")
 	}
 
-	// Help footer.
+	// Status message with appropriate color
+	if m.statusMsg != "" {
+		style := lipglossv1.NewStyle().Foreground(lipglossv1.Color("#10B981"))
+		if m.confirm {
+			style = lipglossv1.NewStyle().Foreground(lipglossv1.Color("#F59E0B")).Bold(true)
+		} else if m.statusErr {
+			style = lipglossv1.NewStyle().Foreground(lipglossv1.Color("#EF4444"))
+		}
+		sb.WriteString(style.Render(m.statusMsg) + "\n")
+	}
+
+	// Help footer
 	help := lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).
-		Render("q quit  s sort  / filter  r refresh  k kill  o open browser")
+		Render("q quit  s sort  / filter  r refresh  k kill  o browser")
 	sb.WriteString(help)
 
 	return sb.String()
 }
 
-// selectedPort returns the PortInfo for the currently highlighted table row.
 func (m *TUIModel) selectedPort() *PortInfo {
 	row := m.table.SelectedRow()
 	if row == nil || len(m.filtered) == 0 {
@@ -237,15 +276,23 @@ func (m *TUIModel) selectedPort() *PortInfo {
 	return nil
 }
 
-// rebuildTable re-applies filter+sort and updates the embedded table.
 func (m *TUIModel) rebuildTable() {
 	rows := m.visibleRows()
 	t := newPortsTable(rows, m.width)
-	t.SetHeight(m.height - 5)
+	h := m.height - 7
+	if m.statusMsg != "" {
+		h--
+	}
+	if m.filtering || m.filter.Value() != "" {
+		h--
+	}
+	if h < 5 {
+		h = 5
+	}
+	t.SetHeight(h)
 	m.table = t
 }
 
-// visibleRows returns filtered and sorted rows, also updates m.filtered.
 func (m *TUIModel) visibleRows() []table.Row {
 	query := strings.ToLower(m.filter.Value())
 	infos := make([]PortInfo, 0, len(m.infos))
@@ -261,8 +308,9 @@ func (m *TUIModel) visibleRows() []table.Row {
 
 	rows := make([]table.Row, len(infos))
 	for i, p := range infos {
+		proto := p.Protocol
 		rows[i] = table.Row{
-			p.Protocol,
+			proto,
 			p.LocalAddr,
 			fmt.Sprintf("%d", p.LocalPort),
 			fmt.Sprintf("%d", p.PID),
@@ -273,7 +321,6 @@ func (m *TUIModel) visibleRows() []table.Row {
 	return rows
 }
 
-// newPortsTable builds a fresh table model with given rows.
 func newPortsTable(rows []table.Row, width int) table.Model {
 	cols := []table.Column{
 		{Title: "Proto", Width: 6},
@@ -305,7 +352,6 @@ func newPortsTable(rows []table.Row, width int) table.Model {
 	return t
 }
 
-// doScan runs Scan in a goroutine and returns a Cmd.
 func doScan(opts ScanOptions) tea.Cmd {
 	return func() tea.Msg {
 		infos, err := Scan(context.Background(), opts)

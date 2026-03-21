@@ -84,18 +84,12 @@ func runNginxGenerate(cmd *cobra.Command, args []string) error {
 	for i, t := range templates {
 		fmt.Printf("  %d) %s\n", i+1, t.label)
 	}
-	fmt.Print("\nChoice [1-5]: ")
-	choice, _ := reader.ReadString('\n')
-	idx, _ := strconv.Atoi(strings.TrimSpace(choice))
-	if idx < 1 || idx > 5 {
-		return fmt.Errorf("invalid choice")
-	}
+	idx := promptInt(reader, "Choice", 1, 1, 5)
 	tmplName := templates[idx-1].value
 
 	// Step 2: Collect common fields
-	domain := prompt(reader, "Server name (domain)", "example.com")
-	portStr := prompt(reader, "Listen port", "80")
-	port, _ := strconv.Atoi(portStr)
+	domain := promptRequired(reader, "Server name (domain)", "example.com")
+	port := promptInt(reader, "Listen port", 80, 1, 65535)
 	ssl := promptBool(reader, "Enable SSL?", false)
 
 	base := nginx.BaseConfig{
@@ -151,8 +145,7 @@ func runNginxGenerate(cmd *cobra.Command, args []string) error {
 
 func buildReverseProxy(r *bufio.Reader, base nginx.BaseConfig) nginx.ReverseProxyConfig {
 	host := prompt(r, "Upstream host", "127.0.0.1")
-	portStr := prompt(r, "Upstream port", "3000")
-	port, _ := strconv.Atoi(portStr)
+	port := promptInt(r, "Upstream port", 3000, 1, 65535)
 	ws := promptBool(r, "WebSocket support?", false)
 	return nginx.ReverseProxyConfig{BaseConfig: base, UpstreamHost: host, UpstreamPort: port, WebSocket: ws}
 }
@@ -160,8 +153,7 @@ func buildReverseProxy(r *bufio.Reader, base nginx.BaseConfig) nginx.ReverseProx
 func buildStaticSite(r *bufio.Reader, base nginx.BaseConfig) nginx.StaticSiteConfig {
 	root := prompt(r, "Document root", "/var/www/html")
 	gzip := promptBool(r, "Enable Gzip?", true)
-	cacheStr := prompt(r, "Cache max-age (days, 0=disabled)", "30")
-	cache, _ := strconv.Atoi(cacheStr)
+	cache := promptInt(r, "Cache max-age (days, 0=disabled)", 30, 0, 365)
 	return nginx.StaticSiteConfig{BaseConfig: base, RootPath: root, IndexFiles: []string{"index.html", "index.htm"}, EnableGzip: gzip, CacheMaxAge: cache}
 }
 
@@ -173,14 +165,12 @@ func buildPHPFPM(r *bufio.Reader, base nginx.BaseConfig) nginx.PHPFPMConfig {
 
 func buildLoadBalancer(r *bufio.Reader, base nginx.BaseConfig) nginx.LoadBalancerConfig {
 	name := prompt(r, "Upstream name", "backend")
-	method := prompt(r, "Method (round-robin/least_conn/ip_hash)", "round-robin")
-	countStr := prompt(r, "Number of backends", "2")
-	count, _ := strconv.Atoi(countStr)
+	method := promptChoice(r, "Method", []string{"round-robin", "least_conn", "ip_hash"}, "round-robin")
+	count := promptInt(r, "Number of backends", 2, 1, 20)
 	var backends []nginx.Backend
 	for i := 0; i < count; i++ {
 		host := prompt(r, fmt.Sprintf("Backend %d host", i+1), "127.0.0.1")
-		portStr := prompt(r, fmt.Sprintf("Backend %d port", i+1), fmt.Sprintf("%d", 3000+i))
-		port, _ := strconv.Atoi(portStr)
+		port := promptInt(r, fmt.Sprintf("Backend %d port", i+1), 3000+i, 1, 65535)
 		backends = append(backends, nginx.Backend{Host: host, Port: port, Weight: 1})
 	}
 	return nginx.LoadBalancerConfig{BaseConfig: base, UpstreamName: name, Backends: backends, Method: method}
@@ -188,8 +178,7 @@ func buildLoadBalancer(r *bufio.Reader, base nginx.BaseConfig) nginx.LoadBalance
 
 func buildWebSocket(r *bufio.Reader, base nginx.BaseConfig) nginx.ReverseProxyConfig {
 	host := prompt(r, "WebSocket upstream host", "127.0.0.1")
-	portStr := prompt(r, "WebSocket upstream port", "8080")
-	port, _ := strconv.Atoi(portStr)
+	port := promptInt(r, "WebSocket upstream port", 8080, 1, 65535)
 	return nginx.ReverseProxyConfig{BaseConfig: base, UpstreamHost: host, UpstreamPort: port, WebSocket: true}
 }
 
@@ -201,6 +190,33 @@ func prompt(r *bufio.Reader, label, defaultVal string) string {
 		return defaultVal
 	}
 	return input
+}
+
+func promptRequired(r *bufio.Reader, label, defaultVal string) string {
+	for {
+		result := prompt(r, label, defaultVal)
+		if result != "" {
+			return result
+		}
+		fmt.Println("  Value required.")
+	}
+}
+
+func promptInt(r *bufio.Reader, label string, defaultVal, min, max int) int {
+	for {
+		fmt.Printf("  %s [%d]: ", label, defaultVal)
+		input, _ := r.ReadString('\n')
+		input = strings.TrimSpace(input)
+		if input == "" {
+			return defaultVal
+		}
+		val, err := strconv.Atoi(input)
+		if err != nil || val < min || val > max {
+			fmt.Printf("  Must be a number between %d and %d.\n", min, max)
+			continue
+		}
+		return val
+	}
 }
 
 func promptBool(r *bufio.Reader, label string, defaultVal bool) bool {
@@ -215,4 +231,21 @@ func promptBool(r *bufio.Reader, label string, defaultVal bool) bool {
 		return defaultVal
 	}
 	return input == "y" || input == "yes"
+}
+
+func promptChoice(r *bufio.Reader, label string, choices []string, defaultVal string) string {
+	for {
+		fmt.Printf("  %s (%s) [%s]: ", label, strings.Join(choices, "/"), defaultVal)
+		input, _ := r.ReadString('\n')
+		input = strings.TrimSpace(input)
+		if input == "" {
+			return defaultVal
+		}
+		for _, c := range choices {
+			if strings.EqualFold(input, c) {
+				return c
+			}
+		}
+		fmt.Printf("  Must be one of: %s\n", strings.Join(choices, ", "))
+	}
 }

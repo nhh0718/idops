@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	lipgloss "github.com/charmbracelet/lipgloss"
-	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/api/types/container"
+	dockerclient "github.com/docker/docker/client"
 )
 
 // logModel is the Bubble Tea model for viewing container logs.
@@ -28,7 +28,8 @@ func NewLogViewer(ctx context.Context, cli *dockerclient.Client, containerID, na
 		return nil, err
 	}
 
-	vp := viewport.New(120, 30)
+	// Use sensible defaults; WindowSizeMsg will resize on first render.
+	vp := viewport.New(80, 20)
 	vp.SetContent(logs)
 
 	return &logModel{
@@ -90,8 +91,12 @@ func (m logModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case tea.WindowSizeMsg:
+		// Reserve 3 lines for title + help bar.
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height - 3
+		if !m.ready {
+			m.ready = true
+		}
 	}
 
 	var cmd tea.Cmd
@@ -100,9 +105,12 @@ func (m logModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m logModel) View() string {
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#7C3AED"))
-	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
-	title := titleStyle.Render("Logs: " + m.title)
-	help := helpStyle.Render("q/Esc: back")
-	return title + "  " + help + "\n" + m.viewport.View()
+	logTitleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#7C3AED"))
+	logHelpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
+
+	// Title shows the container name, not the raw ID.
+	title := logTitleStyle.Render("Logs: " + m.title)
+	help := logHelpStyle.Render("↑↓ scroll  pgup/pgdn page  q/esc back")
+	header := title + "  " + help
+	return header + "\n" + m.viewport.View()
 }

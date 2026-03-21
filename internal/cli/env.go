@@ -55,6 +55,7 @@ func init() {
 	envInitCmd.Flags().Bool("force", false, "overwrite existing file")
 	envValidateCmd.Flags().String("file", ".env", "file to validate")
 	envShowCmd.Flags().String("file", ".env", "file to show")
+	envShowCmd.Flags().Bool("json", false, "output as JSON")
 
 	envCmd.AddCommand(envCompareCmd, envSyncCmd, envValidateCmd, envInitCmd, envShowCmd)
 	rootCmd.AddCommand(envCmd)
@@ -66,11 +67,11 @@ func runEnvCompare(cmd *cobra.Command, args []string) error {
 
 	source, err := env.Parse(srcPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot read %s: %w", srcPath, err)
 	}
 	target, err := env.Parse(tgtPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot read %s: %w", tgtPath, err)
 	}
 
 	diff := env.Compare(source, target)
@@ -80,15 +81,15 @@ func runEnvCompare(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(diff.Missing) > 0 {
-		fmt.Println(ui.RenderWarning(fmt.Sprintf("Missing (%d):", len(diff.Missing))))
+		fmt.Println(ui.RenderWarning(fmt.Sprintf("MISSING in %s (%d):", tgtPath, len(diff.Missing))))
 		for _, k := range diff.Missing {
 			fmt.Printf("  + %s\n", k)
 		}
 	}
 	if len(diff.Extra) > 0 {
-		fmt.Println(ui.RenderInfo(fmt.Sprintf("Extra (%d):", len(diff.Extra))))
+		fmt.Println(ui.RenderInfo(fmt.Sprintf("EXTRA in %s, not in %s (%d):", tgtPath, srcPath, len(diff.Extra))))
 		for _, k := range diff.Extra {
-			fmt.Printf("  - %s\n", k)
+			fmt.Printf("  ~ %s\n", k)
 		}
 	}
 	return nil
