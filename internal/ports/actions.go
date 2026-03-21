@@ -1,6 +1,7 @@
 package ports
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"runtime"
@@ -33,7 +34,7 @@ func KillByPort(port uint32) error {
 		return fmt.Errorf("invalid port: %d (must be 1-65535)", port)
 	}
 
-	infos, err := Scan(nil, ScanOptions{MinPort: port, MaxPort: port})
+	infos, err := Scan(context.Background(), ScanOptions{MinPort: port, MaxPort: port})
 	if err != nil {
 		return err
 	}
