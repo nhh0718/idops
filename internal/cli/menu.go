@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -33,7 +34,7 @@ var menuEntries = []menuEntry{
 	{"⚙️ ", "Nginx Generator", "Generate nginx configs from templates", "nginx"},
 }
 
-// showMenuAndExecute displays a numbered menu and runs the selected subcommand.
+// showMenuAndExecute displays a numbered menu and re-executes idops with selected command.
 func showMenuAndExecute() error {
 	fmt.Println()
 	fmt.Println(menuTitle.Render("  idops - DevOps Toolkit") + "  " + menuVer.Render(version))
@@ -66,12 +67,17 @@ func showMenuAndExecute() error {
 	selected := menuEntries[idx-1].cmd
 	fmt.Println()
 
-	// Find and execute the subcommand
-	for _, sub := range rootCmd.Commands() {
-		if sub.Name() == selected {
-			sub.SetArgs([]string{})
-			return sub.Execute()
-		}
+	// Re-exec the binary with the selected subcommand.
+	// This gives the subcommand a fresh terminal/stdin state,
+	// which is required for Bubble Tea TUI programs to work.
+	execPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("cannot find executable: %w", err)
 	}
-	return fmt.Errorf("command %q not found", selected)
+
+	cmd := exec.Command(execPath, selected)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
