@@ -81,3 +81,38 @@ func RestartContainer(ctx context.Context, cli *client.Client, id string) error 
 	}
 	return nil
 }
+
+// RemoveContainer force-removes a container by ID.
+func RemoveContainer(ctx context.Context, cli *client.Client, id string) error {
+	if err := cli.ContainerRemove(ctx, id, container.RemoveOptions{Force: true}); err != nil {
+		return fmt.Errorf("remove container %s: %w", id, err)
+	}
+	return nil
+}
+
+// InspectContainer returns detailed container info as formatted string.
+func InspectContainer(ctx context.Context, cli *client.Client, id string) (string, error) {
+	info, err := cli.ContainerInspect(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("inspect container %s: %w", id, err)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Name:    %s\n", info.Name))
+	sb.WriteString(fmt.Sprintf("ID:      %s\n", info.ID[:12]))
+	sb.WriteString(fmt.Sprintf("Image:   %s\n", info.Config.Image))
+	sb.WriteString(fmt.Sprintf("State:   %s\n", info.State.Status))
+	sb.WriteString(fmt.Sprintf("Started: %s\n", info.State.StartedAt))
+	if info.State.Health != nil {
+		sb.WriteString(fmt.Sprintf("Health:  %s\n", info.State.Health.Status))
+	}
+	sb.WriteString(fmt.Sprintf("IP:      %s\n", info.NetworkSettings.IPAddress))
+
+	if len(info.Config.Env) > 0 {
+		sb.WriteString("\nEnvironment:\n")
+		for _, e := range info.Config.Env {
+			sb.WriteString(fmt.Sprintf("  %s\n", e))
+		}
+	}
+	return sb.String(), nil
+}

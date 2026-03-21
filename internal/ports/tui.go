@@ -23,12 +23,15 @@ type TUIModel struct {
 	table      table.Model
 	filter     textinput.Model
 	infos      []PortInfo   // full unfiltered dataset
+	filtered   []PortInfo   // current filtered+sorted dataset (for actions)
 	opts       ScanOptions  // scan options (protocol, port range)
 	sortField  SortField
 	watchMode  bool
 	interval   time.Duration
 	filtering  bool  // whether filter input is active
+	confirm    bool  // kill confirmation mode
 	lastErr    string
+	statusMsg  string
 	width      int
 	height     int
 }
@@ -103,6 +106,27 @@ func (m TUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 type tickMsg time.Time
 
 func (m TUIModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Kill confirmation mode
+	if m.confirm {
+		switch msg.String() {
+		case "y", "Y":
+			m.confirm = false
+			selected := m.selectedPort()
+			if selected != nil {
+				if err := KillProcess(selected.PID); err != nil {
+					m.statusMsg = "Kill failed: " + err.Error()
+				} else {
+					m.statusMsg = fmt.Sprintf("Killed %s (PID %d) on port %d", selected.ProcessName, selected.PID, selected.LocalPort)
+				}
+				return m, doScan(m.opts) // refresh after kill
+			}
+		default:
+			m.confirm = false
+			m.statusMsg = ""
+		}
+		return m, nil
+	}
+
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
@@ -114,6 +138,22 @@ func (m TUIModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.filter.Focus()
 	case "r":
 		return m, doScan(m.opts)
+	case "k":
+		// Kill selected process
+		selected := m.selectedPort()
+		if selected != nil && selected.PID > 0 {
+			m.confirm = true
+			m.statusMsg = fmt.Sprintf("Kill %s (PID %d) on port %d? [y/N]", selected.ProcessName, selected.PID, selected.LocalPort)
+		}
+		return m, nil
+	case "o":
+		// Open in browser
+		selected := m.selectedPort()
+		if selected != nil {
+			_ = OpenInBrowser(selected.LocalPort)
+			m.statusMsg = fmt.Sprintf("Opened http://localhost:%d", selected.LocalPort)
+		}
+		return m, nil
 	}
 	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
@@ -165,12 +205,36 @@ func (m TUIModel) View() string {
 
 	sb.WriteString(m.table.View() + "\n")
 
+	// Status message
+	if m.statusMsg != "" {
+		if m.confirm {
+			sb.WriteString(lipglossv1.NewStyle().Foreground(lipglossv1.Color("#F59E0B")).Bold(true).
+				Render(m.statusMsg) + "\n")
+		} else {
+			sb.WriteString(lipglossv1.NewStyle().Foreground(lipglossv1.Color("#10B981")).
+				Render(m.statusMsg) + "\n")
+		}
+	}
+
 	// Help footer.
 	help := lipglossv1.NewStyle().Foreground(lipglossv1.Color("#6B7280")).
-		Render("q quit  s sort  / filter  r refresh")
+		Render("q quit  s sort  / filter  r refresh  k kill  o open browser")
 	sb.WriteString(help)
 
 	return sb.String()
+}
+
+// selectedPort returns the PortInfo for the currently highlighted table row.
+func (m *TUIModel) selectedPort() *PortInfo {
+	row := m.table.SelectedRow()
+	if row == nil || len(m.filtered) == 0 {
+		return nil
+	}
+	idx := m.table.Cursor()
+	if idx >= 0 && idx < len(m.filtered) {
+		return &m.filtered[idx]
+	}
+	return nil
 }
 
 // rebuildTable re-applies filter+sort and updates the embedded table.
@@ -181,7 +245,7 @@ func (m *TUIModel) rebuildTable() {
 	m.table = t
 }
 
-// visibleRows returns filtered and sorted rows.
+// visibleRows returns filtered and sorted rows, also updates m.filtered.
 func (m *TUIModel) visibleRows() []table.Row {
 	query := strings.ToLower(m.filter.Value())
 	infos := make([]PortInfo, 0, len(m.infos))
@@ -193,6 +257,7 @@ func (m *TUIModel) visibleRows() []table.Row {
 		}
 	}
 	SortPortInfos(infos, m.sortField)
+	m.filtered = infos
 
 	rows := make([]table.Row, len(infos))
 	for i, p := range infos {

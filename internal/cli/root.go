@@ -24,6 +24,9 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file path (default: ~/.config/idops/config.yaml)")
+	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return showMenuAndExecute()
+	}
 }
 
 func initConfig() {

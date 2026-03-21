@@ -19,6 +19,19 @@ var portsCmd = &cobra.Command{
 	RunE:  runPorts,
 }
 
+var portsKillCmd = &cobra.Command{
+	Use:   "kill <port>",
+	Short: "Kill process listening on a port",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var port uint32
+		if _, err := fmt.Sscanf(args[0], "%d", &port); err != nil {
+			return fmt.Errorf("invalid port: %s", args[0])
+		}
+		return ports.KillByPort(port)
+	},
+}
+
 func init() {
 	f := portsCmd.Flags()
 	f.Bool("watch", false, "continuously refresh port list")
@@ -28,6 +41,7 @@ func init() {
 	f.String("port", "", "port range filter, e.g. 1024-65535 or 80")
 	f.String("protocol", "", "protocol filter: tcp or udp")
 
+	portsCmd.AddCommand(portsKillCmd)
 	rootCmd.AddCommand(portsCmd)
 }
 
