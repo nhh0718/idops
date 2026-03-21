@@ -193,18 +193,18 @@ func replaceBinary(archivePath, currentPath string) error {
 	}
 	os.Remove(oldPath)
 
-	// Copy dashboard if present in archive
+	// Copy dashboard if present in archive → ~/.idops/dashboard
 	extractedDashboard := filepath.Join(tmpDir, "dashboard")
 	if _, err := os.Stat(extractedDashboard); err == nil {
-		installDir := filepath.Dir(currentPath)
-		destDashboard := filepath.Join(installDir, "dashboard")
+		homeDir, _ := os.UserHomeDir()
+		destDashboard := filepath.Join(homeDir, ".idops", "dashboard")
 
-		// Remove old dashboard, copy new
+		os.MkdirAll(filepath.Join(homeDir, ".idops"), 0755)
 		os.RemoveAll(destDashboard)
 		if err := copyDir(extractedDashboard, destDashboard); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: dashboard copy failed: %v\n", err)
 		} else {
-			fmt.Println("  📦 Dashboard updated")
+			fmt.Println("  📦 Dashboard installed to ~/.idops/dashboard")
 			// Run npm install if node_modules missing
 			nmPath := filepath.Join(destDashboard, "node_modules")
 			if _, err := os.Stat(nmPath); err != nil {

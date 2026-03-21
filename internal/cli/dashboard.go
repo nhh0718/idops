@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -37,15 +38,26 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("cannot get executable path: %w", err)
 	}
+	// Resolve symlinks to get real binary location
+	realExecPath, err := filepath.EvalSymlinks(execPath)
+	if err != nil {
+		realExecPath = execPath
+	}
 	execDir := filepath.Dir(execPath)
+	realExecDir := filepath.Dir(realExecPath)
+
+	// Also check user home install dir
+	homeDir, _ := os.UserHomeDir()
+	idopsHome := filepath.Join(homeDir, ".idops")
 
 	// Try multiple locations for dashboard
 	possiblePaths := []string{
-		filepath.Join(execDir, "dashboard"),
-		filepath.Join(execDir, "..", "dashboard"),
-		filepath.Join(execDir, "..", "..", "dashboard"),
-		"./dashboard",
-		"../dashboard",
+		filepath.Join(realExecDir, "dashboard"),        // next to real binary
+		filepath.Join(execDir, "dashboard"),             // next to binary (or symlink)
+		filepath.Join(realExecDir, "..", "dashboard"),   // parent of real binary
+		filepath.Join(idopsHome, "dashboard"),           // ~/.idops/dashboard
+		filepath.Join(homeDir, ".local", "share", "idops", "dashboard"), // XDG data
+		"./dashboard",                                   // CWD
 	}
 
 	var dashboardPath string
@@ -57,7 +69,7 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 	}
 
 	if dashboardPath == "" {
-		return fmt.Errorf("dashboard not found. Please ensure the dashboard is built and available")
+		return fmt.Errorf("dashboard not found. Searched:\n  %s\nRun 'idops update' to download dashboard, or clone repo and run from project root", strings.Join(possiblePaths, "\n  "))
 	}
 
 	green := "\033[32;1m"
