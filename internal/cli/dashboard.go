@@ -87,8 +87,18 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	// Run npm run dev
-	npmCmd := exec.CommandContext(ctx, "npm", "run", "dev", "--", "-p", dashboardPort)
+	// Use production build if .next exists, otherwise dev mode
+	var npmCmd *exec.Cmd
+	nextBuildDir := filepath.Join(dashboardPath, ".next")
+	if _, err := os.Stat(nextBuildDir); err == nil {
+		// Production: npm start (uses pre-built .next)
+		npmCmd = exec.CommandContext(ctx, "npm", "start", "--", "-p", dashboardPort)
+		fmt.Printf("%s📦 Using production build%s\n", cyan, reset)
+	} else {
+		// Development: npm run dev (requires source + node_modules)
+		npmCmd = exec.CommandContext(ctx, "npm", "run", "dev", "--", "-p", dashboardPort)
+		fmt.Printf("%s🔧 Using development mode%s\n", yellow, reset)
+	}
 	npmCmd.Dir = dashboardPath
 	npmCmd.Stdout = os.Stdout
 	npmCmd.Stderr = os.Stderr

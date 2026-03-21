@@ -22,6 +22,14 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+    files:
+      - dashboard/.next/**/*
+      - dashboard/public/**/*
+      - dashboard/package.json
+      - dashboard/package-lock.json
+      - dashboard/next.config.ts
+      - dashboard/postcss.config.mjs
+      - dashboard/tsconfig.json
 
 checksum:
   name_template: "checksums.txt"

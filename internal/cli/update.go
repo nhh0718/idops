@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -157,20 +158,28 @@ func downloadFile(url string, ext string) (string, error) {
 }
 
 func replaceBinary(archivePath, currentPath string) error {
-	// Extract binary from archive to temp dir
+	// Extract full archive (binary + dashboard) to temp dir
 	tmpDir, err := os.MkdirTemp("", "idops-extract-*")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpDir)
 
-	extractedPath, err := extractBinary(archivePath, tmpDir)
-	if err != nil {
+	if err := extractAll(archivePath, tmpDir); err != nil {
 		return fmt.Errorf("extract failed: %w", err)
 	}
 
-	// On Windows, can't replace running binary directly.
-	// Rename current -> .old, then move extracted -> current
+	// Find the binary in extracted files
+	binaryName := "idops"
+	if runtime.GOOS == "windows" {
+		binaryName = "idops.exe"
+	}
+	extractedBinary := filepath.Join(tmpDir, binaryName)
+	if _, err := os.Stat(extractedBinary); err != nil {
+		return fmt.Errorf("binary not found in archive")
+	}
+
+	// Replace binary: rename current -> .old, copy new -> current
 	oldPath := currentPath + ".old"
 	os.Remove(oldPath)
 
@@ -178,27 +187,39 @@ func replaceBinary(archivePath, currentPath string) error {
 		return fmt.Errorf("cannot rename current binary: %w", err)
 	}
 
-	src, err := os.Open(extractedPath)
-	if err != nil {
+	if err := copyFile(extractedBinary, currentPath); err != nil {
 		os.Rename(oldPath, currentPath) // rollback
 		return err
 	}
-	defer src.Close()
-
-	dst, err := os.OpenFile(currentPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
-	if err != nil {
-		os.Rename(oldPath, currentPath)
-		return err
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, src); err != nil {
-		dst.Close()
-		os.Remove(currentPath)
-		os.Rename(oldPath, currentPath)
-		return err
-	}
-
 	os.Remove(oldPath)
+
+	// Copy dashboard if present in archive
+	extractedDashboard := filepath.Join(tmpDir, "dashboard")
+	if _, err := os.Stat(extractedDashboard); err == nil {
+		installDir := filepath.Dir(currentPath)
+		destDashboard := filepath.Join(installDir, "dashboard")
+
+		// Remove old dashboard, copy new
+		os.RemoveAll(destDashboard)
+		if err := copyDir(extractedDashboard, destDashboard); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: dashboard copy failed: %v\n", err)
+		} else {
+			fmt.Println("  📦 Dashboard updated")
+			// Run npm install if node_modules missing
+			nmPath := filepath.Join(destDashboard, "node_modules")
+			if _, err := os.Stat(nmPath); err != nil {
+				fmt.Println("  📥 Installing dashboard dependencies...")
+				npmCmd := exec.Command("npm", "install", "--production")
+				npmCmd.Dir = destDashboard
+				npmCmd.Stdout = os.Stdout
+				npmCmd.Stderr = os.Stderr
+				if err := npmCmd.Run(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: npm install failed: %v\n", err)
+				}
+			}
+		}
+	}
+
 	return nil
 }
+
