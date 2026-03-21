@@ -309,7 +309,7 @@ export default function PortsTab({
                           : "bg-amber-500/10 text-amber-400"
                       }`}
                     >
-                      {p.protocol.toUpperCase()}
+                      {(p.protocol || "tcp").toUpperCase()}
                     </span>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-[var(--color-muted)]">

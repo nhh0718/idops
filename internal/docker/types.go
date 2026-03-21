@@ -4,22 +4,22 @@ import "time"
 
 // ContainerInfo holds display-ready container metadata.
 type ContainerInfo struct {
-	ID      string
-	Name    string
-	Image   string
-	Status  string
-	State   string
-	Ports   string
-	Created time.Time
-	Stats   *StatsSnapshot
+	ID      string         `json:"id"`
+	Name    string         `json:"name"`
+	Image   string         `json:"image"`
+	Status  string         `json:"status"`
+	State   string         `json:"state"`
+	Ports   string         `json:"ports"`
+	Created time.Time      `json:"created"`
+	Stats   *StatsSnapshot `json:"stats,omitempty"`
 }
 
 // StatsSnapshot is a single-point-in-time resource usage snapshot.
 type StatsSnapshot struct {
-	CPUPercent float64
-	MemPercent float64
-	MemUsage   uint64
-	MemLimit   uint64
-	NetIn      uint64
-	NetOut     uint64
+	CPUPercent float64 `json:"cpu"`
+	MemPercent float64 `json:"memory"`
+	MemUsage   uint64  `json:"memUsage"`
+	MemLimit   uint64  `json:"memLimit"`
+	NetIn      uint64  `json:"netIn"`
+	NetOut     uint64  `json:"netOut"`
 }

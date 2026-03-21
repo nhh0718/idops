@@ -2,14 +2,14 @@ package ports
 
 // PortInfo holds metadata for a single listening port connection.
 type PortInfo struct {
-	Protocol    string
-	LocalAddr   string
-	LocalPort   uint32
-	RemoteAddr  string
-	PID         int32
-	ProcessName string
-	User        string
-	Status      string
+	Protocol    string `json:"protocol"`
+	LocalAddr   string `json:"address"`
+	LocalPort   uint32 `json:"port"`
+	RemoteAddr  string `json:"remoteAddr,omitempty"`
+	PID         int32  `json:"pid"`
+	ProcessName string `json:"process"`
+	User        string `json:"user"`
+	Status      string `json:"status"`
 }
 
 // SortField defines the column to sort PortInfo slices by.
