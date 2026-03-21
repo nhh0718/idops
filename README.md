@@ -6,27 +6,27 @@ Built with Go, Cobra, Bubble Tea.
 
 ## Install
 
+### One-line install (recommended)
+
+```bash
+# Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/nhh0718/idops/main/install.sh | sh
+```
+
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/nhh0718/idops/main/install.ps1 | iex
+```
+
 ### Go install (requires Go 1.22+)
 
 ```bash
 go install github.com/nhh0718/idops/cmd/idops@latest
 ```
 
-### Download binary
+### Manual download
 
-Grab the latest from [Releases](https://github.com/nhh0718/idops/releases):
-
-```bash
-# Linux
-curl -L https://github.com/nhh0718/idops/releases/latest/download/idops_Linux_amd64.tar.gz | tar xz
-sudo mv idops /usr/local/bin/
-
-# macOS
-curl -L https://github.com/nhh0718/idops/releases/latest/download/idops_Darwin_arm64.tar.gz | tar xz
-sudo mv idops /usr/local/bin/
-
-# Windows - download .zip from releases, add to PATH
-```
+Grab the latest from [Releases](https://github.com/nhh0718/idops/releases).
 
 ### Build from source
 
