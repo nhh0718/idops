@@ -46,12 +46,22 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	latest := release.TagName
-	fmt.Printf("  Current: %s\n", version)
+	current := version
+	// Normalize: ensure both have v prefix for comparison
+	if !strings.HasPrefix(current, "v") && current != "dev" {
+		current = "v" + current
+	}
+
+	fmt.Printf("  Current: %s\n", current)
 	fmt.Printf("  Latest:  %s\n", latest)
 
-	if version == latest {
+	if current == latest {
 		fmt.Println(ui.RenderSuccess("Already up to date!"))
 		return nil
+	}
+
+	if current == "dev" {
+		fmt.Println(ui.RenderWarning("Running dev build, updating to latest release..."))
 	}
 
 	// Find matching asset

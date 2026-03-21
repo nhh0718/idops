@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 	lipgloss "github.com/charmbracelet/lipgloss"
@@ -14,6 +13,7 @@ var (
 	menuSel   = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("#7C3AED")).Bold(true)
 	menuDesc  = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
 	menuHelp  = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280")).MarginTop(1)
+	menuVer   = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
 )
 
 type menuEntry struct {
@@ -32,7 +32,8 @@ var menuEntries = []menuEntry{
 }
 
 type menuModel struct {
-	cursor int
+	cursor   int
+	quitting bool // true = user pressed q (exit), false = user pressed enter (select)
 }
 
 func (m menuModel) Init() tea.Cmd { return nil }
@@ -41,7 +42,8 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q", "ctrl+c":
+		case "q", "ctrl+c", "esc":
+			m.quitting = true
 			return m, tea.Quit
 		case "up", "k":
 			if m.cursor > 0 {
@@ -52,6 +54,7 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 		case "enter":
+			m.quitting = false
 			return m, tea.Quit
 		}
 	}
@@ -59,7 +62,11 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m menuModel) View() string {
-	s := menuTitle.Render("idops - DevOps Toolkit") + "\n\n"
+	if m.quitting {
+		return ""
+	}
+
+	s := menuTitle.Render("idops - DevOps Toolkit") + "  " + menuVer.Render(version) + "\n\n"
 
 	for i, entry := range menuEntries {
 		line := fmt.Sprintf("%s %s  %s", entry.icon, entry.name, menuDesc.Render(entry.desc))
@@ -74,35 +81,30 @@ func (m menuModel) View() string {
 	return s
 }
 
-// runMenu shows interactive menu and returns selected command name.
-func runMenu() (string, error) {
+// showMenuAndExecute runs the interactive menu then dispatches to selected subcommand.
+func showMenuAndExecute() error {
 	m := menuModel{}
 	p := tea.NewProgram(m)
 	result, err := p.Run()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	final := result.(menuModel)
-	return menuEntries[final.cursor].cmd, nil
-}
 
-// showMenuAndExecute runs the interactive menu then dispatches to selected subcommand.
-func showMenuAndExecute() error {
-	cmd, err := runMenu()
-	if err != nil {
-		return err
-	}
-	if cmd == "" {
+	// User pressed q/esc/ctrl+c — exit cleanly
+	if final.quitting {
 		return nil
 	}
 
+	selected := menuEntries[final.cursor].cmd
+
 	// Find and execute the subcommand
 	for _, sub := range rootCmd.Commands() {
-		if sub.Name() == cmd {
-			sub.SetArgs(os.Args[1:]) // pass remaining args
+		if sub.Name() == selected {
+			sub.SetArgs([]string{}) // no extra args from menu
 			return sub.Execute()
 		}
 	}
-	return fmt.Errorf("command %q not found", cmd)
+	return fmt.Errorf("command %q not found", selected)
 }

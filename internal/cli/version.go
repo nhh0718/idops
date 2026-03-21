@@ -2,7 +2,9 @@ package cli
 
 import (
 	"fmt"
+	"runtime"
 
+	"github.com/nhh0718/idops/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +19,11 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("idops %s (%s) built %s\n", version, commit, date)
+		fmt.Println(ui.TitleStyle.Render("idops") + " " + version)
+		fmt.Printf("  Commit:   %s\n", commit)
+		fmt.Printf("  Built:    %s\n", date)
+		fmt.Printf("  Go:       %s\n", runtime.Version())
+		fmt.Printf("  OS/Arch:  %s/%s\n", runtime.GOOS, runtime.GOARCH)
 	},
 }
 
@@ -30,4 +36,9 @@ func SetVersionInfo(v, c, d string) {
 	version = v
 	commit = c
 	date = d
+}
+
+// GetVersion returns the current version string.
+func GetVersion() string {
+	return version
 }
