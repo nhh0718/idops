@@ -79,8 +79,12 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("  Downloading %s...\n", assetName)
 
-	// Download to temp file
-	tmpPath, err := downloadFile(downloadURL)
+	// Download to temp file with correct extension
+	ext := ".tar.gz"
+	if strings.HasSuffix(assetName, ".zip") {
+		ext = ".zip"
+	}
+	tmpPath, err := downloadFile(downloadURL, ext)
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}
@@ -131,14 +135,14 @@ func buildAssetName(tag string) string {
 	return fmt.Sprintf("idops_%s_%s_%s.%s", ver, osName, arch, ext)
 }
 
-func downloadFile(url string) (string, error) {
+func downloadFile(url string, ext string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 
-	tmpFile, err := os.CreateTemp("", "idops-update-*")
+	tmpFile, err := os.CreateTemp("", "idops-update-*"+ext)
 	if err != nil {
 		return "", err
 	}

@@ -1,18 +1,20 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
 	lipgloss "github.com/charmbracelet/lipgloss"
 )
 
 var (
-	menuTitle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#7C3AED")).MarginBottom(1)
-	menuItem  = lipgloss.NewStyle().PaddingLeft(2)
-	menuSel   = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("#7C3AED")).Bold(true)
+	menuTitle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#7C3AED"))
+	menuIdx   = lipgloss.NewStyle().Foreground(lipgloss.Color("#7C3AED")).Bold(true)
+	menuName  = lipgloss.NewStyle().Bold(true)
 	menuDesc  = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
-	menuHelp  = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280")).MarginTop(1)
 	menuVer   = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
 )
 
@@ -31,78 +33,43 @@ var menuEntries = []menuEntry{
 	{"⚙️ ", "Nginx Generator", "Generate nginx configs from templates", "nginx"},
 }
 
-type menuModel struct {
-	cursor   int
-	quitting bool // true = user pressed q (exit), false = user pressed enter (select)
-}
-
-func (m menuModel) Init() tea.Cmd { return nil }
-
-func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c", "esc":
-			m.quitting = true
-			return m, tea.Quit
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "down", "j":
-			if m.cursor < len(menuEntries)-1 {
-				m.cursor++
-			}
-		case "enter":
-			m.quitting = false
-			return m, tea.Quit
-		}
-	}
-	return m, nil
-}
-
-func (m menuModel) View() string {
-	if m.quitting {
-		return ""
-	}
-
-	s := menuTitle.Render("idops - DevOps Toolkit") + "  " + menuVer.Render(version) + "\n\n"
+// showMenuAndExecute displays a numbered menu and runs the selected subcommand.
+func showMenuAndExecute() error {
+	fmt.Println()
+	fmt.Println(menuTitle.Render("  idops - DevOps Toolkit") + "  " + menuVer.Render(version))
+	fmt.Println()
 
 	for i, entry := range menuEntries {
-		line := fmt.Sprintf("%s %s  %s", entry.icon, entry.name, menuDesc.Render(entry.desc))
-		if i == m.cursor {
-			s += menuSel.Render("▸ " + line) + "\n"
-		} else {
-			s += menuItem.Render("  " + line) + "\n"
-		}
+		num := menuIdx.Render(fmt.Sprintf("  [%d]", i+1))
+		name := menuName.Render(fmt.Sprintf("%s %s", entry.icon, entry.name))
+		desc := menuDesc.Render(entry.desc)
+		fmt.Printf("%s %s  %s\n", num, name, desc)
 	}
 
-	s += "\n" + menuHelp.Render("  ↑↓/jk navigate • enter select • q quit")
-	return s
-}
+	fmt.Println()
+	fmt.Print(menuDesc.Render("  Select [1-5] or q to quit: "))
 
-// showMenuAndExecute runs the interactive menu then dispatches to selected subcommand.
-func showMenuAndExecute() error {
-	m := menuModel{}
-	p := tea.NewProgram(m)
-	result, err := p.Run()
-	if err != nil {
-		return err
-	}
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
 
-	final := result.(menuModel)
-
-	// User pressed q/esc/ctrl+c — exit cleanly
-	if final.quitting {
+	if input == "q" || input == "" {
 		return nil
 	}
 
-	selected := menuEntries[final.cursor].cmd
+	idx, err := strconv.Atoi(input)
+	if err != nil || idx < 1 || idx > len(menuEntries) {
+		fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444")).Render("  Invalid choice"))
+		return nil
+	}
+
+	selected := menuEntries[idx-1].cmd
+	fmt.Println()
 
 	// Find and execute the subcommand
 	for _, sub := range rootCmd.Commands() {
 		if sub.Name() == selected {
-			sub.SetArgs([]string{}) // no extra args from menu
+			sub.SetArgs([]string{})
 			return sub.Execute()
 		}
 	}
