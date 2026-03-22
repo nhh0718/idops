@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -76,6 +77,21 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 	cyan := "\033[36m"
 	yellow := "\033[33m"
 	reset := "\033[0m"
+
+	// Auto-find free port if requested port is busy
+	if !isPortFree(dashboardPort) {
+		if dashboardPort == "3000" {
+			// Only auto-switch for default port
+			newPort := findFreePort(3001, 3100)
+			if newPort == "" {
+				return fmt.Errorf("port %s is in use and no free port found (3001-3100)", dashboardPort)
+			}
+			fmt.Printf("%s⚠️  Port %s đang bị chiếm, chuyển sang port %s%s\n", yellow, dashboardPort, newPort, reset)
+			dashboardPort = newPort
+		} else {
+			return fmt.Errorf("port %s is already in use. Try a different port with --port", dashboardPort)
+		}
+	}
 
 	fmt.Printf("%s🚀 Starting idops dashboard...%s\n", green, reset)
 	fmt.Println()
@@ -197,4 +213,25 @@ func openBrowser(url string) error {
 	default: // linux and others
 		return exec.Command("xdg-open", url).Start()
 	}
+}
+
+// isPortFree checks if a port is available to listen on.
+func isPortFree(port string) bool {
+	ln, err := net.Listen("tcp", ":"+port)
+	if err != nil {
+		return false
+	}
+	ln.Close()
+	return true
+}
+
+// findFreePort scans a range and returns the first free port as string.
+func findFreePort(start, end int) string {
+	for p := start; p <= end; p++ {
+		port := fmt.Sprintf("%d", p)
+		if isPortFree(port) {
+			return port
+		}
+	}
+	return ""
 }
