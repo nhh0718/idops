@@ -58,9 +58,12 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
     publicKey?: string;
   } | null>(null);
   const [keygenLoading, setKeygenLoading] = useState(false);
+  const [sshKeys, setSshKeys] = useState<{ name: string; type: string; comment: string; fingerprint: string }[]>([]);
+  const [showKeys, setShowKeys] = useState(false);
 
   useEffect(() => {
     loadHosts();
+    loadKeys();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -73,6 +76,29 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
       showStatus("Failed to load SSH hosts", true);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function loadKeys() {
+    try {
+      const data = await sshApi.keys();
+      setSshKeys(data);
+    } catch {
+      // ignore — keys listing is optional
+    }
+  }
+
+  async function deleteKey(name: string) {
+    try {
+      const result = await sshApi.deleteKey(name);
+      if (result.success) {
+        showStatus(`Đã xóa key: ${name}`);
+        loadKeys();
+      } else {
+        showStatus(result.error || "Xóa key thất bại", true);
+      }
+    } catch {
+      showStatus("Xóa key thất bại", true);
     }
   }
 
@@ -577,6 +603,60 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
           </div>
         </div>
       )}
+
+      {/* SSH Keys Section */}
+      <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl overflow-hidden">
+        <button
+          onClick={() => setShowKeys(!showKeys)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--color-background)] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <KeyRound size={16} className="text-[var(--warning)]" />
+            <span className="text-sm font-bold text-[var(--color-foreground)]">
+              SSH Keys ({sshKeys.length})
+            </span>
+          </div>
+          <span className="text-xs text-[var(--color-muted)]">
+            {showKeys ? "▲ Ẩn" : "▼ Hiện"}
+          </span>
+        </button>
+        {showKeys && (
+          <div className="border-t border-[var(--color-border)]">
+            {sshKeys.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-[var(--color-muted)]">
+                Không tìm thấy SSH key nào trong ~/.ssh/
+              </p>
+            ) : (
+              <div className="divide-y divide-[var(--color-border)]">
+                {sshKeys.map((k) => (
+                  <div key={k.name} className="flex items-center justify-between px-5 py-3 hover:bg-[var(--color-background)] transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Key size={14} className="text-[var(--warning)] shrink-0" />
+                        <span className="text-sm font-medium text-[var(--color-foreground)] truncate">{k.name}</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-[var(--color-background)] text-[var(--color-muted)] border border-[var(--color-border)]">
+                          {k.type}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-xs text-[var(--color-muted)] truncate pl-5">
+                        {k.comment && <span>{k.comment} · </span>}
+                        {k.fingerprint && <span className="font-mono">{k.fingerprint}</span>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { if (confirm(`Xóa key "${k.name}"?`)) deleteKey(k.name); }}
+                      className="shrink-0 p-1.5 rounded-lg text-[var(--color-muted)] hover:text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors"
+                      title="Xóa key"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Keygen Modal */}
       {showKeygen && (

@@ -100,6 +100,17 @@ export const sshApi = {
     const data = await res.json();
     return data.hosts || [];
   },
+
+  keys: async (): Promise<{ name: string; type: string; comment: string; fingerprint: string; publicKey: string; privateKey: string }[]> => {
+    const res = await fetch(`${API_BASE}/ssh/keys`);
+    const data = await res.json();
+    return data.keys || [];
+  },
+
+  deleteKey: async (name: string): Promise<{ success: boolean; error?: string }> => {
+    const res = await fetch(`${API_BASE}/ssh/keys?name=${name}`, { method: "DELETE" });
+    return res.json();
+  },
 };
 
 // Env API
