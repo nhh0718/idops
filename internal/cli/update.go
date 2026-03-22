@@ -183,28 +183,42 @@ func replaceBinary(archivePath, currentPath string) error {
 	// Windows locks the running exe, so we copy new binary next to it
 	// and use a helper script to swap after this process exits.
 	if runtime.GOOS == "windows" {
-		newPath := currentPath + ".new"
-		os.Remove(newPath)
-		if err := copyFile(extractedBinary, newPath); err != nil {
+		// On Windows, rename running exe to .old (this works even while running)
+		oldPath := currentPath + ".old"
+		os.Remove(oldPath) // remove any previous .old
+		if err := os.Rename(currentPath, oldPath); err != nil {
+			// Rename failed — try copy-and-swap via batch script
+			newPath := currentPath + ".new"
+			os.Remove(newPath)
+			if err := copyFile(extractedBinary, newPath); err != nil {
+				return fmt.Errorf("cannot write new binary: %w", err)
+			}
+			batPath := filepath.Join(filepath.Dir(currentPath), "idops-update.bat")
+			batContent := fmt.Sprintf("@echo off\r\n"+
+				":retry\r\n"+
+				"timeout /t 1 /nobreak >nul\r\n"+
+				"move /Y \"%s\" \"%s\" >nul 2>&1\r\n"+
+				"if errorlevel 1 goto retry\r\n"+
+				"del /f \"%s\" >nul 2>&1\r\n"+
+				"del /f \"%s\" >nul 2>&1\r\n",
+				newPath, currentPath, oldPath, batPath)
+			if err := os.WriteFile(batPath, []byte(batContent), 0755); err != nil {
+				return fmt.Errorf("cannot create update script: %w", err)
+			}
+			cmd := exec.Command("cmd", "/C", "start", "/min", batPath)
+			if err := cmd.Start(); err != nil {
+				return fmt.Errorf("cannot launch update script: %w", err)
+			}
+			fmt.Println("  ⏳ Update sẽ hoàn tất sau khi thoát idops...")
+			return nil
+		}
+		// Rename succeeded — copy new binary to original path
+		if err := copyFile(extractedBinary, currentPath); err != nil {
+			os.Rename(oldPath, currentPath) // rollback
 			return fmt.Errorf("cannot write new binary: %w", err)
 		}
-		// Create a batch script that waits, swaps, and cleans up
-		batPath := filepath.Join(filepath.Dir(currentPath), "idops-update.bat")
-		batContent := fmt.Sprintf("@echo off\r\n"+
-			"timeout /t 2 /nobreak >nul\r\n"+
-			"del \"%s\"\r\n"+
-			"move \"%s\" \"%s\"\r\n"+
-			"del \"%s\"\r\n",
-			currentPath, newPath, currentPath, batPath)
-		if err := os.WriteFile(batPath, []byte(batContent), 0755); err != nil {
-			return fmt.Errorf("cannot create update script: %w", err)
-		}
-		// Launch the batch script detached
-		cmd := exec.Command("cmd", "/C", "start", "/b", batPath)
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("cannot launch update script: %w", err)
-		}
-		fmt.Println("  ⏳ Update will complete in a few seconds after exit...")
+		os.Remove(oldPath) // cleanup
+		fmt.Println("  ✅ Binary đã được thay thế trực tiếp")
 	} else {
 		// Unix: rename is atomic and works on running binaries
 		oldPath := currentPath + ".old"

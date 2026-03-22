@@ -124,17 +124,27 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	// Use production build if .next exists, otherwise dev mode
+	// Auto-build if .next/BUILD_ID missing
 	var npmCmd *exec.Cmd
-	nextBuildDir := filepath.Join(dashboardPath, ".next")
-	if _, err := os.Stat(nextBuildDir); err == nil {
-		// Production: npm start (uses pre-built .next)
+	nextBuildID := filepath.Join(dashboardPath, ".next", "BUILD_ID")
+	if _, err := os.Stat(nextBuildID); err != nil {
+		fmt.Printf("%s🔨 Đang build dashboard (lần đầu)...%s\n", yellow, reset)
+		buildCmd := exec.CommandContext(ctx, "npm", "run", "build")
+		buildCmd.Dir = dashboardPath
+		buildCmd.Stdout = os.Stdout
+		buildCmd.Stderr = os.Stderr
+		if err := buildCmd.Run(); err != nil {
+			fmt.Printf("%s⚠️  Build thất bại, chuyển sang dev mode%s\n", yellow, reset)
+		}
+	}
+
+	// Use production build if .next/BUILD_ID exists, otherwise dev mode
+	if _, err := os.Stat(nextBuildID); err == nil {
 		npmCmd = exec.CommandContext(ctx, "npm", "start", "--", "-p", dashboardPort)
-		fmt.Printf("%s📦 Using production build%s\n", cyan, reset)
+		fmt.Printf("%s📦 Production mode%s\n", cyan, reset)
 	} else {
-		// Development: npm run dev (requires source + node_modules)
 		npmCmd = exec.CommandContext(ctx, "npm", "run", "dev", "--", "-p", dashboardPort)
-		fmt.Printf("%s🔧 Using development mode%s\n", yellow, reset)
+		fmt.Printf("%s🔧 Development mode%s\n", yellow, reset)
 	}
 	npmCmd.Dir = dashboardPath
 	npmCmd.Stdout = os.Stdout
