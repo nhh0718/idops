@@ -23,13 +23,7 @@ archives:
       - goos: windows
         format: zip
     files:
-      - dashboard/.next/**/*
-      - dashboard/public/**/*
-      - dashboard/package.json
-      - dashboard/package-lock.json
-      - dashboard/next.config.ts
-      - dashboard/postcss.config.mjs
-      - dashboard/tsconfig.json
+      - dashboard/.next/standalone/**/*
 
 checksum:
   name_template: "checksums.txt"

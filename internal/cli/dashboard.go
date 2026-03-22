@@ -3,13 +3,11 @@ package cli
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -105,12 +103,12 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 	fmt.Printf("%s🚀 Starting idops dashboard...%s\n", green, reset)
 	fmt.Println()
 
-	// Check if npm is available
-	if _, err := exec.LookPath("npm"); err != nil {
-		return fmt.Errorf("npm not found in PATH. Please install Node.js")
+	// Check if node is available
+	nodeBin, err := exec.LookPath("node")
+	if err != nil {
+		return fmt.Errorf("node not found in PATH. Please install Node.js")
 	}
 
-	// Start Next.js dev server
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -124,35 +122,68 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	// Auto-build if .next/BUILD_ID missing
-	var npmCmd *exec.Cmd
-	nextBuildID := filepath.Join(dashboardPath, ".next", "BUILD_ID")
-	if _, err := os.Stat(nextBuildID); err != nil {
-		fmt.Printf("%s🔨 Đang build dashboard (lần đầu)...%s\n", yellow, reset)
-		buildCmd := exec.CommandContext(ctx, "npm", "run", "build")
-		buildCmd.Dir = dashboardPath
-		buildCmd.Stdout = os.Stdout
-		buildCmd.Stderr = os.Stderr
-		if err := buildCmd.Run(); err != nil {
-			fmt.Printf("%s⚠️  Build thất bại, chuyển sang dev mode%s\n", yellow, reset)
-		}
+	// Determine server mode: standalone (release) or npm dev (source)
+	standalonePath := filepath.Join(dashboardPath, ".next", "standalone", "server.js")
+	appDirExists := false
+	if _, err := os.Stat(filepath.Join(dashboardPath, "app")); err == nil {
+		appDirExists = true
 	}
 
-	// Use production build if .next/BUILD_ID exists, otherwise dev mode
-	if _, err := os.Stat(nextBuildID); err == nil {
-		npmCmd = exec.CommandContext(ctx, "npm", "start", "--", "-p", dashboardPort)
-		fmt.Printf("%s📦 Production mode%s\n", cyan, reset)
+	var serverCmd *exec.Cmd
+
+	if _, err := os.Stat(standalonePath); err == nil {
+		// Standalone mode: use pre-built server.js (from release)
+		fmt.Printf("%s📦 Production mode (standalone)%s\n", cyan, reset)
+		serverCmd = exec.CommandContext(ctx, nodeBin, standalonePath)
+		serverCmd.Dir = filepath.Join(dashboardPath, ".next", "standalone")
+		serverCmd.Env = append(os.Environ(),
+			"PORT="+dashboardPort,
+			"HOSTNAME=0.0.0.0",
+			"IDOPS_CLI_PATH="+execPath,
+		)
+	} else if appDirExists {
+		// Dev mode: source code available, use npm
+		npmBin, npmErr := exec.LookPath("npm")
+		if npmErr != nil {
+			return fmt.Errorf("npm not found in PATH. Install Node.js or use a release build")
+		}
+
+		// Auto-build if needed
+		nextBuildID := filepath.Join(dashboardPath, ".next", "BUILD_ID")
+		if _, err := os.Stat(nextBuildID); err != nil {
+			fmt.Printf("%s🔨 Đang build dashboard...%s\n", yellow, reset)
+			buildCmd := exec.CommandContext(ctx, npmBin, "run", "build")
+			buildCmd.Dir = dashboardPath
+			buildCmd.Stdout = os.Stdout
+			buildCmd.Stderr = os.Stderr
+			_ = buildCmd.Run()
+		}
+
+		// Check standalone after build
+		if _, err := os.Stat(standalonePath); err == nil {
+			fmt.Printf("%s📦 Production mode (standalone)%s\n", cyan, reset)
+			serverCmd = exec.CommandContext(ctx, nodeBin, standalonePath)
+			serverCmd.Dir = filepath.Join(dashboardPath, ".next", "standalone")
+			serverCmd.Env = append(os.Environ(),
+				"PORT="+dashboardPort,
+				"HOSTNAME=0.0.0.0",
+				"IDOPS_CLI_PATH="+execPath,
+			)
+		} else {
+			fmt.Printf("%s🔧 Development mode%s\n", yellow, reset)
+			serverCmd = exec.CommandContext(ctx, npmBin, "run", "dev", "--", "-p", dashboardPort)
+			serverCmd.Dir = dashboardPath
+			serverCmd.Env = append(os.Environ(),
+				"PORT="+dashboardPort,
+				"IDOPS_CLI_PATH="+execPath,
+			)
+		}
 	} else {
-		npmCmd = exec.CommandContext(ctx, "npm", "run", "dev", "--", "-p", dashboardPort)
-		fmt.Printf("%s🔧 Development mode%s\n", yellow, reset)
+		return fmt.Errorf("dashboard chỉ có package.json nhưng thiếu source code và standalone build.\nChạy 'idops update' để tải bản mới hoặc clone repo")
 	}
-	npmCmd.Dir = dashboardPath
-	npmCmd.Stdout = os.Stdout
-	npmCmd.Stderr = os.Stderr
-	npmCmd.Env = append(os.Environ(),
-		"PORT="+dashboardPort,
-		"IDOPS_CLI_PATH="+execPath,
-	)
+
+	serverCmd.Stdout = os.Stdout
+	serverCmd.Stderr = os.Stderr
 
 	serverURL := fmt.Sprintf("http://localhost:%s", dashboardPort)
 	ready := make(chan bool)
@@ -161,7 +192,7 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 	// Start server FIRST
 	fmt.Printf("⏳ Đang khởi động dashboard trên port %s...\n", dashboardPort)
 	go func() {
-		if err := npmCmd.Run(); err != nil && ctx.Err() == nil {
+		if err := serverCmd.Run(); err != nil && ctx.Err() == nil {
 			npmErr <- err
 		}
 	}()
@@ -227,45 +258,3 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func openBrowser(url string) error {
-	switch runtime.GOOS {
-	case "windows":
-		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		return exec.Command("open", url).Start()
-	default: // linux and others
-		return exec.Command("xdg-open", url).Start()
-	}
-}
-
-// isPortFree checks if a port is available by trying to connect to it.
-// Uses Dial instead of Listen because on Windows, Listen can succeed
-// even when another process holds the port (dual-stack IPv4/IPv6).
-func isPortFree(port string) bool {
-	conn, err := net.DialTimeout("tcp", "127.0.0.1:"+port, 500*time.Millisecond)
-	if err != nil {
-		// Connection refused = nothing listening = port is free
-		return true
-	}
-	conn.Close()
-	// Something is listening = port is NOT free
-	return false
-}
-
-// findFreePort scans a range and returns the first free port as string.
-func findFreePort(start, end int) string {
-	for p := start; p <= end; p++ {
-		port := fmt.Sprintf("%d", p)
-		if isPortFree(port) {
-			return port
-		}
-	}
-	return ""
-}
-
-// mustAtoi converts string to int, returns 0 on error.
-func mustAtoi(s string) int {
-	var n int
-	fmt.Sscanf(s, "%d", &n)
-	return n
-}

@@ -29,6 +29,9 @@ jobs:
           cd dashboard
           npm ci
           npm run build
+          # Copy static assets into standalone (required by Next.js standalone mode)
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
