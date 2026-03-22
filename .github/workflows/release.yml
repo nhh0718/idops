@@ -32,6 +32,7 @@ jobs:
           # Flatten standalone into dashboard-dist/ for simple distribution
           mkdir -p ../dashboard-dist
           cp -r .next/standalone/* ../dashboard-dist/
+          mkdir -p ../dashboard-dist/.next
           cp -r .next/static ../dashboard-dist/.next/static
           cp -r public ../dashboard-dist/public
           # Create marker file for detection
