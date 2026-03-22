@@ -51,32 +51,48 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 	idopsHome := filepath.Join(homeDir, ".idops")
 
 	// Try multiple locations for dashboard
-	possiblePaths := []string{
-		filepath.Join(realExecDir, "dashboard"),        // next to real binary
-		filepath.Join(execDir, "dashboard"),             // next to binary (or symlink)
-		filepath.Join(realExecDir, "..", "dashboard"),   // parent of real binary
-		filepath.Join(idopsHome, "dashboard"),           // ~/.idops/dashboard
-		filepath.Join(homeDir, ".local", "share", "idops", "dashboard"), // XDG data
-		"./dashboard",                                   // CWD
+	// dashboard-dist = flattened standalone (from release)
+	// dashboard = source code (for dev)
+	searchNames := []string{"dashboard-dist", "dashboard"}
+	searchDirs := []string{
+		realExecDir,                                       // next to real binary
+		execDir,                                            // next to binary (or symlink)
+		filepath.Join(realExecDir, ".."),                   // parent of real binary
+		idopsHome,                                          // ~/.idops/
+		filepath.Join(homeDir, ".local", "share", "idops"), // XDG data
+		".",                                                // CWD
 	}
 
 	var dashboardPath string
-	for _, path := range possiblePaths {
-		// Check for standalone server.js (release build)
-		if _, err := os.Stat(filepath.Join(path, ".next", "standalone", "server.js")); err == nil {
-			dashboardPath = path
-			break
+	var isStandalone bool
+	var searchedPaths []string
+
+	for _, dir := range searchDirs {
+		for _, name := range searchNames {
+			path := filepath.Join(dir, name)
+			searchedPaths = append(searchedPaths, path)
+
+			// Check for standalone marker or server.js
+			if _, err := os.Stat(filepath.Join(path, "server.js")); err == nil {
+				dashboardPath = path
+				isStandalone = true
+				break
+			}
+			// Check for source code (dev mode)
+			if _, err := os.Stat(filepath.Join(path, "app", "page.tsx")); err == nil {
+				dashboardPath = path
+				break
+			}
 		}
-		// Check for package.json (source/dev build)
-		if _, err := os.Stat(filepath.Join(path, "package.json")); err == nil {
-			dashboardPath = path
+		if dashboardPath != "" {
 			break
 		}
 	}
 
 	if dashboardPath == "" {
-		return fmt.Errorf("dashboard not found. Searched:\n  %s\nRun 'idops update' to download dashboard, or clone repo and run from project root", strings.Join(possiblePaths, "\n  "))
+		return fmt.Errorf("dashboard not found. Searched:\n  %s\nRun 'idops update' or reinstall: irm https://raw.githubusercontent.com/nhh0718/idops/main/install.ps1 | iex", strings.Join(searchedPaths, "\n  "))
 	}
+	_ = isStandalone
 
 	green := "\033[32;1m"
 	cyan := "\033[36m"
@@ -128,64 +144,33 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	// Determine server mode: standalone (release) or npm dev (source)
-	standalonePath := filepath.Join(dashboardPath, ".next", "standalone", "server.js")
-	appDirExists := false
-	if _, err := os.Stat(filepath.Join(dashboardPath, "app")); err == nil {
-		appDirExists = true
-	}
-
+	// Determine server mode
+	serverJSPath := filepath.Join(dashboardPath, "server.js")
 	var serverCmd *exec.Cmd
 
-	if _, err := os.Stat(standalonePath); err == nil {
-		// Standalone mode: use pre-built server.js (from release)
-		fmt.Printf("%s📦 Production mode (standalone)%s\n", cyan, reset)
-		serverCmd = exec.CommandContext(ctx, nodeBin, standalonePath)
-		serverCmd.Dir = filepath.Join(dashboardPath, ".next", "standalone")
+	if _, err := os.Stat(serverJSPath); err == nil {
+		// Standalone mode: server.js at dashboard root (from release)
+		fmt.Printf("%s📦 Production mode%s\n", cyan, reset)
+		serverCmd = exec.CommandContext(ctx, nodeBin, "server.js")
+		serverCmd.Dir = dashboardPath
 		serverCmd.Env = append(os.Environ(),
 			"PORT="+dashboardPort,
 			"HOSTNAME=0.0.0.0",
 			"IDOPS_CLI_PATH="+execPath,
 		)
-	} else if appDirExists {
-		// Dev mode: source code available, use npm
+	} else {
+		// Dev mode: source code, use npm
 		npmBin, npmErr := exec.LookPath("npm")
 		if npmErr != nil {
-			return fmt.Errorf("npm not found in PATH. Install Node.js or use a release build")
+			return fmt.Errorf("npm not found. Install Node.js or use release build")
 		}
-
-		// Auto-build if needed
-		nextBuildID := filepath.Join(dashboardPath, ".next", "BUILD_ID")
-		if _, err := os.Stat(nextBuildID); err != nil {
-			fmt.Printf("%s🔨 Đang build dashboard...%s\n", yellow, reset)
-			buildCmd := exec.CommandContext(ctx, npmBin, "run", "build")
-			buildCmd.Dir = dashboardPath
-			buildCmd.Stdout = os.Stdout
-			buildCmd.Stderr = os.Stderr
-			_ = buildCmd.Run()
-		}
-
-		// Check standalone after build
-		if _, err := os.Stat(standalonePath); err == nil {
-			fmt.Printf("%s📦 Production mode (standalone)%s\n", cyan, reset)
-			serverCmd = exec.CommandContext(ctx, nodeBin, standalonePath)
-			serverCmd.Dir = filepath.Join(dashboardPath, ".next", "standalone")
-			serverCmd.Env = append(os.Environ(),
-				"PORT="+dashboardPort,
-				"HOSTNAME=0.0.0.0",
-				"IDOPS_CLI_PATH="+execPath,
-			)
-		} else {
-			fmt.Printf("%s🔧 Development mode%s\n", yellow, reset)
-			serverCmd = exec.CommandContext(ctx, npmBin, "run", "dev", "--", "-p", dashboardPort)
-			serverCmd.Dir = dashboardPath
-			serverCmd.Env = append(os.Environ(),
-				"PORT="+dashboardPort,
-				"IDOPS_CLI_PATH="+execPath,
-			)
-		}
-	} else {
-		return fmt.Errorf("dashboard chỉ có package.json nhưng thiếu source code và standalone build.\nChạy 'idops update' để tải bản mới hoặc clone repo")
+		fmt.Printf("%s🔧 Development mode%s\n", yellow, reset)
+		serverCmd = exec.CommandContext(ctx, npmBin, "run", "dev", "--", "-p", dashboardPort)
+		serverCmd.Dir = dashboardPath
+		serverCmd.Env = append(os.Environ(),
+			"PORT="+dashboardPort,
+			"IDOPS_CLI_PATH="+execPath,
+		)
 	}
 
 	serverCmd.Stdout = os.Stdout

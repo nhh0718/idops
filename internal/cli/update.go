@@ -234,10 +234,10 @@ func replaceBinary(archivePath, currentPath string) error {
 		os.Remove(oldPath)
 	}
 
-	// Copy dashboard next to binary (same dir as idops.exe)
-	extractedDashboard := filepath.Join(tmpDir, "dashboard")
+	// Copy dashboard-dist next to binary (same dir as idops.exe)
+	extractedDashboard := filepath.Join(tmpDir, "dashboard-dist")
 	if _, err := os.Stat(extractedDashboard); err == nil {
-		destDashboard := filepath.Join(filepath.Dir(currentPath), "dashboard")
+		destDashboard := filepath.Join(filepath.Dir(currentPath), "dashboard-dist")
 		os.RemoveAll(destDashboard)
 		if err := copyDir(extractedDashboard, destDashboard); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: dashboard copy failed: %v\n", err)

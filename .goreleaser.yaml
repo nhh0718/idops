@@ -23,7 +23,7 @@ archives:
       - goos: windows
         format: zip
     files:
-      - dashboard/.next/standalone/**/*
+      - dashboard-dist/**/*
 
 checksum:
   name_template: "checksums.txt"

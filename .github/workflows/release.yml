@@ -29,9 +29,13 @@ jobs:
           cd dashboard
           npm ci
           npm run build
-          # Copy static assets into standalone (required by Next.js standalone mode)
-          cp -r .next/static .next/standalone/.next/static
-          cp -r public .next/standalone/public
+          # Flatten standalone into dashboard-dist/ for simple distribution
+          mkdir -p ../dashboard-dist
+          cp -r .next/standalone/* ../dashboard-dist/
+          cp -r .next/static ../dashboard-dist/.next/static
+          cp -r public ../dashboard-dist/public
+          # Create marker file for detection
+          echo "standalone" > ../dashboard-dist/.idops-dashboard
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6

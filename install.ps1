@@ -48,10 +48,13 @@ if (-not $binaryFile) {
 }
 Copy-Item $binaryFile.FullName (Join-Path $installDir "$binary.exe") -Force
 
-# Find and install dashboard if present
-$dashboardSrc = Get-ChildItem -Path $tmpDir -Recurse -Directory -Filter "dashboard" | Select-Object -First 1
+# Find and install dashboard (dashboard-dist from release, or dashboard from source)
+$dashboardSrc = Get-ChildItem -Path $tmpDir -Recurse -Directory -Filter "dashboard-dist" | Select-Object -First 1
+if (-not $dashboardSrc) {
+    $dashboardSrc = Get-ChildItem -Path $tmpDir -Recurse -Directory -Filter "dashboard" | Select-Object -First 1
+}
 if ($dashboardSrc) {
-    $dashboardDest = Join-Path $installDir "dashboard"
+    $dashboardDest = Join-Path $installDir "dashboard-dist"
     if (Test-Path $dashboardDest) { Remove-Item -Recurse -Force $dashboardDest }
     Copy-Item $dashboardSrc.FullName $dashboardDest -Recurse -Force
     Write-Host "  Dashboard installed" -ForegroundColor Green
