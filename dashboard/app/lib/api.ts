@@ -85,6 +85,7 @@ export const sshApi = {
     type?: "ed25519" | "rsa";
     bits?: number;
     comment?: string;
+    force?: boolean;
   }): Promise<{ success: boolean; privateKey?: string; publicKey?: string; error?: string; exists?: boolean }> => {
     const res = await fetch(`${API_BASE}/ssh/keygen`, {
       method: "POST",
