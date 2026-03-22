@@ -99,6 +99,9 @@ var sshTestCmd = &cobra.Command{
 
 		jsonFlag, _ := cmd.Flags().GetBool("json")
 		if jsonFlag {
+			for i := range results {
+				results[i].FillJSON()
+			}
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
 			return enc.Encode(results)

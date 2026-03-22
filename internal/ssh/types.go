@@ -17,6 +17,17 @@ type SSHHost struct {
 type TestResult struct {
 	Host    SSHHost       `json:"host"`
 	Success bool          `json:"success"`
-	Latency time.Duration `json:"latency"`
-	Error   error         `json:"error,omitempty"`
+	Latency time.Duration `json:"-"`
+	Error   error         `json:"-"`
+	// JSON-friendly fields populated by MarshalJSON-aware callers
+	LatencyStr string `json:"latency"`
+	ErrorStr   string `json:"error,omitempty"`
+}
+
+// FillJSON populates JSON-friendly string fields from native types.
+func (r *TestResult) FillJSON() {
+	r.LatencyStr = r.Latency.Round(time.Millisecond).String()
+	if r.Error != nil {
+		r.ErrorStr = r.Error.Error()
+	}
 }
