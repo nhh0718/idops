@@ -234,23 +234,15 @@ func replaceBinary(archivePath, currentPath string) error {
 		os.Remove(oldPath)
 	}
 
-	// Copy dashboard if present in archive → ~/.idops/dashboard
+	// Copy dashboard next to binary (same dir as idops.exe)
 	extractedDashboard := filepath.Join(tmpDir, "dashboard")
 	if _, err := os.Stat(extractedDashboard); err == nil {
-		homeDir, _ := os.UserHomeDir()
-		destDashboard := filepath.Join(homeDir, ".idops", "dashboard")
-
-		os.MkdirAll(filepath.Join(homeDir, ".idops"), 0755)
+		destDashboard := filepath.Join(filepath.Dir(currentPath), "dashboard")
 		os.RemoveAll(destDashboard)
 		if err := copyDir(extractedDashboard, destDashboard); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: dashboard copy failed: %v\n", err)
 		} else {
-			fmt.Println("  📦 Dashboard installed to ~/.idops/dashboard")
-			// Standalone mode: no npm install needed (server.js is self-contained)
-			serverJS := filepath.Join(destDashboard, ".next", "standalone", "server.js")
-			if _, err := os.Stat(serverJS); err == nil {
-				fmt.Println("  ✅ Standalone dashboard ready (no npm needed)")
-			}
+			fmt.Println("  📦 Dashboard installed next to binary")
 		}
 	}
 

@@ -41,6 +41,15 @@ $installDir = Join-Path $env:LOCALAPPDATA "idops"
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 Copy-Item (Join-Path $tmpDir "$binary.exe") (Join-Path $installDir "$binary.exe") -Force
 
+# Install dashboard if present in archive
+$dashboardSrc = Join-Path $tmpDir "dashboard"
+if (Test-Path $dashboardSrc) {
+    $dashboardDest = Join-Path $installDir "dashboard"
+    if (Test-Path $dashboardDest) { Remove-Item -Recurse -Force $dashboardDest }
+    Copy-Item $dashboardSrc $dashboardDest -Recurse -Force
+    Write-Host "  Dashboard installed" -ForegroundColor Green
+}
+
 # Add to PATH if not already there
 $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
 if ($userPath -notlike "*$installDir*") {
