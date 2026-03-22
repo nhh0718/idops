@@ -29,13 +29,20 @@ jobs:
           cd dashboard
           npm ci
           npm run build
-          # Flatten standalone into dashboard-dist/ for simple distribution
+          # Flatten standalone into dashboard-dist/
           mkdir -p ../dashboard-dist
-          cp -r .next/standalone/* ../dashboard-dist/
-          mkdir -p ../dashboard-dist/.next
+          # Copy ALL files including dotfiles (.next) from standalone
+          cp -a .next/standalone/. ../dashboard-dist/
+          # Merge static assets into the .next dir
           cp -r .next/static ../dashboard-dist/.next/static
-          cp -r public ../dashboard-dist/public
-          # Create marker file for detection
+          # Copy public assets
+          cp -r public ../dashboard-dist/public 2>/dev/null || true
+          # Verify critical files exist
+          echo "=== Verifying dashboard-dist ==="
+          ls -la ../dashboard-dist/
+          ls -la ../dashboard-dist/.next/ || echo "FATAL: .next missing"
+          test -f ../dashboard-dist/server.js || { echo "FATAL: server.js missing"; exit 1; }
+          # Create marker
           echo "standalone" > ../dashboard-dist/.idops-dashboard
 
       - name: Run GoReleaser

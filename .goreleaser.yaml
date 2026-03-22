@@ -23,7 +23,7 @@ archives:
       - goos: windows
         format: zip
     files:
-      - dashboard-dist/**/*
+      - dashboard-dist/**
 
 checksum:
   name_template: "checksums.txt"
