@@ -122,6 +122,9 @@
   "env": {
     "title": "Quản lý biến môi trường",
     "subtitle": "Quản lý biến môi trường, so sánh tệp tin và xác thực cấu hình",
+    "description": "Công cụ này giúp bạn quản lý các tệp .env cho dự án của mình. Bạn có thể xem các biến một cách an toàn, so sánh .env hiện tại với .env.example để tìm các khóa bị thiếu, kiểm tra cú pháp của tệp .env và đồng bộ hóa các biến bị thiếu một cách tương tác.",
+    "pathPlaceholder": "Đường dẫn đến dự án hoặc tệp .env...",
+    "pathHelp": "Nhập đường dẫn tuyệt đối đến thư mục dự án của bạn hoặc một tệp .env cụ thể.",
     "tabs": {
       "show": "Biến",
       "compare": "So sánh",

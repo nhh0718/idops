@@ -120,8 +120,11 @@
     }
   },
   "env": {
-    "title": "Env Manager",
+    "title": "Environment Variables",
     "subtitle": "Manage environment variables, compare files, and validate configurations",
+    "description": "This tool helps you manage .env files for your projects. You can view variables safely, compare your current .env with .env.example to find missing keys, validate the syntax of your .env file, and interactively sync missing variables.",
+    "pathPlaceholder": "Path to project or .env file...",
+    "pathHelp": "Enter the absolute path to your project directory or a specific .env file.",
     "tabs": {
       "show": "Variables",
       "compare": "Compare",

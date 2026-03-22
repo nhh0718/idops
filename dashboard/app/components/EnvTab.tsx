@@ -15,7 +15,7 @@ import {
   Search,
   Shield,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { envApi } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 import type { EnvValidationIssue, EnvVariable } from "../types";
@@ -37,6 +37,7 @@ export default function EnvTab({
   >("show");
   const [showSecrets, setShowSecrets] = useState(false);
   const [filter, setFilter] = useState("");
+  const [envPath, setEnvPath] = useState("");
   const [statusMsg, setStatusMsg] = useState<{
     text: string;
     isError: boolean;
@@ -49,54 +50,6 @@ export default function EnvTab({
     output?: string;
     error?: string;
   } | null>(null);
-
-  useEffect(() => {
-    if (activeSubTab === "show") {
-      loadEnvVars();
-    } else if (activeSubTab === "compare") {
-      loadCompare();
-    } else if (activeSubTab === "validate") {
-      loadValidate();
-    }
-  }, [activeSubTab]);
-
-  async function loadEnvVars() {
-    setIsLoading(true);
-    try {
-      const data = await envApi.show();
-      const vars: EnvVariable[] = Object.entries(data).map(([key, value]) => ({
-        key,
-        value: value as string,
-        isSensitive:
-          key.toLowerCase().includes("key") ||
-          key.toLowerCase().includes("secret") ||
-          key.toLowerCase().includes("password"),
-      }));
-      setEnvVars(vars);
-    } catch {
-      showStatus("Failed to load env variables", true);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function loadCompare() {
-    try {
-      const result = await envApi.compare();
-      setCompareOutput(result.output || "No differences found");
-    } catch {
-      showStatus("Failed to compare env files", true);
-    }
-  }
-
-  async function loadValidate() {
-    try {
-      const result = await envApi.validate();
-      setValidationResult(result);
-    } catch {
-      showStatus("Failed to validate env file", true);
-    }
-  }
 
   // Validation mock data
   const [validationIssues] = useState<EnvValidationIssue[]>([
@@ -120,6 +73,70 @@ export default function EnvTab({
       message: "trailing whitespace in value",
     },
   ]);
+
+  const loadEnvVarsCb = useCallback(loadEnvVars, [envPath]);
+  const loadCompareCb = useCallback(loadCompare, [envPath]);
+  const loadValidateCb = useCallback(loadValidate, [envPath]);
+
+  useEffect(() => {
+    if (activeSubTab === "show") {
+      loadEnvVarsCb();
+    } else if (activeSubTab === "compare") {
+      loadCompareCb();
+    } else if (activeSubTab === "validate") {
+      loadValidateCb();
+    }
+  }, [activeSubTab, loadEnvVarsCb, loadCompareCb, loadValidateCb]);
+
+  async function loadEnvVars() {
+    setIsLoading(true);
+    try {
+      const data = await envApi.show(envPath || ".env");
+      const vars: EnvVariable[] = Object.entries(data).map(([key, value]) => ({
+        key,
+        value: value as string,
+        isSensitive:
+          key.toLowerCase().includes("key") ||
+          key.toLowerCase().includes("secret") ||
+          key.toLowerCase().includes("password"),
+      }));
+      setEnvVars(vars);
+    } catch {
+      showStatus("Failed to load env variables", true);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function loadCompare() {
+    try {
+      // Pass the selected env file path instead of just the default
+      // Assuming envPath points to a specific .env file, we compare against .env.example in the same dir
+      const target = envPath || ".env";
+      let source = ".env.example";
+
+      // Basic heuristic to find .env.example relative to the given .env path
+      if (target.includes("/") || target.includes("\\")) {
+        const parts = target.replace(/\\/g, "/").split("/");
+        parts.pop(); // remove filename
+        source = parts.join("/") + "/.env.example";
+      }
+
+      const result = await envApi.compare(source, target);
+      setCompareOutput(result.output || "No differences found");
+    } catch {
+      showStatus("Failed to compare env files", true);
+    }
+  }
+
+  async function loadValidate() {
+    try {
+      const result = await envApi.validate(envPath || ".env");
+      setValidationResult(result);
+    } catch {
+      showStatus("Failed to validate env file", true);
+    }
+  }
 
   function showStatus(text: string, isError = false) {
     setStatusMsg({ text, isError });
@@ -183,7 +200,7 @@ export default function EnvTab({
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-[var(--color-foreground)] flex items-center gap-3">
             <FileCode size={24} className="text-[var(--warning)]" />
@@ -194,8 +211,22 @@ export default function EnvTab({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder={t("env.pathPlaceholder")}
+              title={t("env.pathHelp")}
+              value={envPath}
+              onChange={(e) => setEnvPath(e.target.value)}
+              className="w-48 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary)]"
+            />
+          </div>
           <button
-            onClick={loadEnvVars}
+            onClick={() => {
+              if (activeSubTab === "show") loadEnvVars();
+              if (activeSubTab === "compare") loadCompare();
+              if (activeSubTab === "validate") loadValidate();
+            }}
             disabled={isLoading}
             className="flex items-center gap-2 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:border-[var(--color-primary)] transition-all disabled:opacity-50"
           >
@@ -203,6 +234,11 @@ export default function EnvTab({
             {t("common.refresh")}
           </button>
         </div>
+      </div>
+
+      <div className="bg-[var(--info)]/10 border border-[var(--info)]/20 rounded-xl p-4 flex gap-3 text-sm text-[var(--info)]">
+        <FileCode size={18} className="flex-shrink-0 mt-0.5" />
+        <p>{t("env.description")}</p>
       </div>
 
       {/* Stats */}
