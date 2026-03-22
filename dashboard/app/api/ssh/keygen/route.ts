@@ -8,7 +8,7 @@ const CLI_PATH = process.env.IDOPS_CLI_PATH || "idops";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name = "id_ed25519", type = "ed25519", bits = 4096, comment = "" } = body;
+    const { name = "id_ed25519", type = "ed25519", bits = 4096, comment = "", force = false } = body;
 
     if (type !== "ed25519" && type !== "rsa") {
       return NextResponse.json(
@@ -18,6 +18,9 @@ export async function POST(request: Request) {
     }
 
     let command = `${CLI_PATH} ssh keygen --json --name ${name} --type ${type}`;
+    if (force) {
+      command += " --force";
+    }
     if (type === "rsa") {
       command += ` --bits ${bits}`;
     }

@@ -18,6 +18,7 @@ func init() {
 	sshKeygenCmd.Flags().Int("bits", 4096, "Số bit RSA (chỉ áp dụng với --type rsa)")
 	sshKeygenCmd.Flags().String("comment", "", "Comment (thường là email)")
 	sshKeygenCmd.Flags().Bool("json", false, "Xuất kết quả dạng JSON")
+	sshKeygenCmd.Flags().Bool("force", false, "Ghi đè nếu key đã tồn tại")
 }
 
 var sshKeygenCmd = &cobra.Command{
@@ -29,6 +30,7 @@ var sshKeygenCmd = &cobra.Command{
 		bits, _ := cmd.Flags().GetInt("bits")
 		comment, _ := cmd.Flags().GetString("comment")
 		jsonOut, _ := cmd.Flags().GetBool("json")
+		force, _ := cmd.Flags().GetBool("force")
 
 		if keyType != "ed25519" && keyType != "rsa" {
 			return fmt.Errorf("loại key không hợp lệ %q, chỉ hỗ trợ ed25519 hoặc rsa", keyType)
@@ -39,6 +41,7 @@ var sshKeygenCmd = &cobra.Command{
 			Type:    keyType,
 			Bits:    bits,
 			Comment: comment,
+			Force:   force,
 		})
 		if err != nil {
 			return err

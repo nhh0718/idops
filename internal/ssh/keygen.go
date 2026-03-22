@@ -13,6 +13,7 @@ type KeygenOptions struct {
 	Type    string // "ed25519" or "rsa"
 	Bits    int    // RSA key bits (default 4096), ignored for ed25519
 	Comment string // e.g. email address
+	Force   bool   // overwrite existing key without asking
 }
 
 // KeygenResult contains paths of generated keys.
@@ -42,6 +43,16 @@ func GenerateKey(opts KeygenOptions) (KeygenResult, error) {
 	}
 
 	keyPath := filepath.Join(sshDir, opts.Name)
+
+	// Check if key already exists
+	if _, err := os.Stat(keyPath); err == nil {
+		if !opts.Force {
+			return KeygenResult{}, fmt.Errorf("key '%s' đã tồn tại. Dùng --force để ghi đè", keyPath)
+		}
+		// Remove existing files so ssh-keygen won't prompt
+		os.Remove(keyPath)
+		os.Remove(keyPath + ".pub")
+	}
 
 	args := []string{"-t", opts.Type}
 	if opts.Type == "rsa" && opts.Bits > 0 {
