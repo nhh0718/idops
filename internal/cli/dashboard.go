@@ -62,6 +62,12 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 
 	var dashboardPath string
 	for _, path := range possiblePaths {
+		// Check for standalone server.js (release build)
+		if _, err := os.Stat(filepath.Join(path, ".next", "standalone", "server.js")); err == nil {
+			dashboardPath = path
+			break
+		}
+		// Check for package.json (source/dev build)
 		if _, err := os.Stat(filepath.Join(path, "package.json")); err == nil {
 			dashboardPath = path
 			break

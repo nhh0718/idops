@@ -246,17 +246,10 @@ func replaceBinary(archivePath, currentPath string) error {
 			fmt.Fprintf(os.Stderr, "Warning: dashboard copy failed: %v\n", err)
 		} else {
 			fmt.Println("  📦 Dashboard installed to ~/.idops/dashboard")
-			// Run npm install if node_modules missing
-			nmPath := filepath.Join(destDashboard, "node_modules")
-			if _, err := os.Stat(nmPath); err != nil {
-				fmt.Println("  📥 Installing dashboard dependencies...")
-				npmCmd := exec.Command("npm", "install", "--production")
-				npmCmd.Dir = destDashboard
-				npmCmd.Stdout = os.Stdout
-				npmCmd.Stderr = os.Stderr
-				if err := npmCmd.Run(); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: npm install failed: %v\n", err)
-				}
+			// Standalone mode: no npm install needed (server.js is self-contained)
+			serverJS := filepath.Join(destDashboard, ".next", "standalone", "server.js")
+			if _, err := os.Stat(serverJS); err == nil {
+				fmt.Println("  ✅ Standalone dashboard ready (no npm needed)")
 			}
 		}
 	}
