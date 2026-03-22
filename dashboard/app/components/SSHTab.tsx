@@ -51,6 +51,7 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
     type: "ed25519" as "ed25519" | "rsa",
     bits: 4096,
     comment: "",
+    force: false,
   });
   const [keygenResult, setKeygenResult] = useState<{
     privateKey?: string;
@@ -118,6 +119,9 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
       if (result.success) {
         setKeygenResult({ privateKey: result.privateKey, publicKey: result.publicKey });
         showStatus(t("ssh.keygen.success"));
+      } else if (result.exists) {
+        // Key exists — show message and suggest enabling force
+        showStatus(result.error || "Key đã tồn tại. Bật 'Ghi đè' để tạo mới.", true);
       } else {
         showStatus(result.error || t("ssh.keygen.error"), true);
       }
@@ -645,6 +649,18 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
                   onChange={(e) => setKeygenForm((f) => ({ ...f, comment: e.target.value }))}
                   className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary)]"
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="keygen-force"
+                  checked={keygenForm.force}
+                  onChange={(e) => setKeygenForm((f) => ({ ...f, force: e.target.checked }))}
+                  className="rounded border-[var(--color-border)]"
+                />
+                <label htmlFor="keygen-force" className="text-xs text-[var(--color-muted)]">
+                  Ghi đè nếu key đã tồn tại (--force)
+                </label>
               </div>
               {keygenResult && (
                 <div className="bg-[var(--color-background)] rounded-lg p-3 space-y-1 font-mono text-xs">

@@ -31,11 +31,19 @@ export async function POST(request: Request) {
     const { stdout } = await execAsync(command);
     const result = JSON.parse(stdout);
     return NextResponse.json({ success: true, ...result });
-  } catch (error) {
-    console.error("SSH keygen error:", error);
-    return NextResponse.json(
-      { error: "Tạo SSH key thất bại", success: false },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const stderr = (error as { stderr?: string })?.stderr || "";
+    // Key already exists — return as info, not server error
+    if (stderr.includes("đã tồn tại")) {
+      return NextResponse.json({
+        success: false,
+        error: "Key đã tồn tại. Bật 'Ghi đè' để tạo mới.",
+        exists: true,
+      });
+    }
+    return NextResponse.json({
+      error: "Tạo SSH key thất bại",
+      success: false,
+    });
   }
 }

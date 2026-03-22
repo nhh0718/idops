@@ -15,12 +15,8 @@ export async function GET(request: Request) {
       `${CLI_PATH} env compare --source ${source} --target ${target}`
     );
     return NextResponse.json({ output: stdout });
-  } catch (error) {
-    console.error("Env compare error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json(
-      { error: errorMessage, output: "" },
-      { status: 500 }
-    );
+  } catch {
+    // Files not found or not readable — return empty, not error
+    return NextResponse.json({ output: "", unavailable: true });
   }
 }
