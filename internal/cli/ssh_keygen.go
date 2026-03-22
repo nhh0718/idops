@@ -53,7 +53,10 @@ var sshKeygenCmd = &cobra.Command{
 			return enc.Encode(result)
 		}
 
-		fmt.Printf("Đã tạo SSH key: %s\n", result.PrivateKey)
+		if result.Output != "" {
+			fmt.Print(result.Output)
+		}
+		fmt.Printf("\nĐã tạo SSH key: %s\n", result.PrivateKey)
 		fmt.Printf("Public key:     %s\n", result.PublicKey)
 		return nil
 	},

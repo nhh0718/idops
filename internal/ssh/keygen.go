@@ -20,6 +20,7 @@ type KeygenOptions struct {
 type KeygenResult struct {
 	PrivateKey string `json:"privateKey"`
 	PublicKey  string `json:"publicKey"`
+	Output     string `json:"output,omitempty"` // ssh-keygen output (fingerprint, etc)
 }
 
 // GenerateKey runs ssh-keygen to create a new SSH key pair.
@@ -69,14 +70,15 @@ func GenerateKey(opts KeygenOptions) (KeygenResult, error) {
 	}
 
 	cmd := exec.Command(sshKeygen, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return KeygenResult{}, fmt.Errorf("ssh-keygen thất bại: %w", err)
+	// Capture output instead of piping to stdout (prevents mixing with JSON output)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return KeygenResult{}, fmt.Errorf("ssh-keygen thất bại: %s", string(output))
 	}
 
 	return KeygenResult{
 		PrivateKey: keyPath,
 		PublicKey:  keyPath + ".pub",
+		Output:     string(output),
 	}, nil
 }

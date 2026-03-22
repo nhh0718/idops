@@ -33,8 +33,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, ...result });
   } catch (error: unknown) {
     const stderr = (error as { stderr?: string })?.stderr || "";
+    const stdout = (error as { stdout?: string })?.stdout || "";
+    const detail = stderr || stdout || String(error);
+
     // Key already exists — return as info, not server error
-    if (stderr.includes("đã tồn tại")) {
+    if (detail.includes("đã tồn tại")) {
       return NextResponse.json({
         success: false,
         error: "Key đã tồn tại. Bật 'Ghi đè' để tạo mới.",
@@ -42,7 +45,7 @@ export async function POST(request: Request) {
       });
     }
     return NextResponse.json({
-      error: "Tạo SSH key thất bại",
+      error: `Tạo SSH key thất bại: ${detail.slice(0, 200)}`,
       success: false,
     });
   }
