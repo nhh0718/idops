@@ -10,11 +10,7 @@ export async function GET() {
     const { stdout } = await execAsync(`${CLI_PATH} ssh --json`);
     const hosts = JSON.parse(stdout);
     return NextResponse.json({ hosts });
-  } catch (error) {
-    console.error("SSH list error:", error);
-    return NextResponse.json(
-      { error: "Failed to list SSH hosts", hosts: [] },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ hosts: [], unavailable: true });
   }
 }

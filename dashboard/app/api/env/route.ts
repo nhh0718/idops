@@ -13,11 +13,8 @@ export async function GET(request: Request) {
     const { stdout } = await execAsync(`${CLI_PATH} env show --file ${file} --json`);
     const envVars = JSON.parse(stdout);
     return NextResponse.json({ envVars });
-  } catch (error) {
-    console.error("Env show error:", error);
-    return NextResponse.json(
-      { error: "Failed to read env file", envVars: {} },
-      { status: 500 }
-    );
+  } catch {
+    // .env file not found or not readable — return empty, not error
+    return NextResponse.json({ envVars: {}, unavailable: true });
   }
 }

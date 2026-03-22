@@ -12,11 +12,8 @@ export async function GET() {
     const { stdout } = await execAsync(`${CLI_PATH} docker --json`);
     const containers = JSON.parse(stdout);
     return NextResponse.json({ containers });
-  } catch (error) {
-    console.error("Docker list error:", error);
-    return NextResponse.json(
-      { error: "Failed to list containers", containers: [] },
-      { status: 500 }
-    );
+  } catch {
+    // Docker not running or not accessible — return empty list, not error
+    return NextResponse.json({ containers: [], unavailable: true });
   }
 }

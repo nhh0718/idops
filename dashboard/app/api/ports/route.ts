@@ -22,11 +22,7 @@ export async function GET(request: Request) {
     const { stdout } = await execAsync(command);
     const ports = JSON.parse(stdout);
     return NextResponse.json({ ports });
-  } catch (error) {
-    console.error("Ports scan error:", error);
-    return NextResponse.json(
-      { error: "Failed to scan ports", ports: [] },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ ports: [], unavailable: true });
   }
 }
