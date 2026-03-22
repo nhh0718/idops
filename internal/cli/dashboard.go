@@ -144,15 +144,24 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 		"IDOPS_CLI_PATH="+execPath,
 	)
 
-	// Wait for server to be ready
 	serverURL := fmt.Sprintf("http://localhost:%s", dashboardPort)
 	ready := make(chan bool)
+	npmErr := make(chan error, 1)
 
+	// Start server FIRST
+	fmt.Printf("⏳ Đang khởi động dashboard trên port %s...\n", dashboardPort)
 	go func() {
-		// Poll for server readiness
-		ticker := time.NewTicker(500 * time.Millisecond)
+		if err := npmCmd.Run(); err != nil && ctx.Err() == nil {
+			npmErr <- err
+		}
+	}()
+
+	// Wait 2s before polling to avoid hitting old server
+	go func() {
+		time.Sleep(2 * time.Second)
+		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
-		timeout := time.After(30 * time.Second)
+		timeout := time.After(60 * time.Second)
 
 		for {
 			select {
@@ -174,21 +183,13 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	// Start server in background
-	go func() {
-		if err := npmCmd.Run(); err != nil && ctx.Err() == nil {
-			fmt.Fprintf(os.Stderr, "Dashboard server error: %v\n", err)
-		}
-	}()
-
-	// Wait for server to be ready
-	fmt.Printf("⏳ Waiting for dashboard to start on port %s...\n", dashboardPort)
-
 	select {
 	case success := <-ready:
 		if !success {
-			return fmt.Errorf("dashboard failed to start within 30 seconds")
+			return fmt.Errorf("dashboard không khởi động được trong 60 giây")
 		}
+	case err := <-npmErr:
+		return fmt.Errorf("dashboard server lỗi: %w", err)
 	case <-ctx.Done():
 		return nil
 	}
@@ -227,14 +228,18 @@ func openBrowser(url string) error {
 	}
 }
 
-// isPortFree checks if a port is available to listen on.
+// isPortFree checks if a port is available by trying to connect to it.
+// Uses Dial instead of Listen because on Windows, Listen can succeed
+// even when another process holds the port (dual-stack IPv4/IPv6).
 func isPortFree(port string) bool {
-	ln, err := net.Listen("tcp", ":"+port)
+	conn, err := net.DialTimeout("tcp", "127.0.0.1:"+port, 500*time.Millisecond)
 	if err != nil {
-		return false
+		// Connection refused = nothing listening = port is free
+		return true
 	}
-	ln.Close()
-	return true
+	conn.Close()
+	// Something is listening = port is NOT free
+	return false
 }
 
 // findFreePort scans a range and returns the first free port as string.
