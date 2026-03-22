@@ -32,3 +32,4 @@ config.yaml
 # GoReleaser
 dist/
 .claude/
+dashboard-dist/
