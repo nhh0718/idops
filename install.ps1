@@ -39,15 +39,24 @@ Expand-Archive -Path $zipPath -DestinationPath $tmpDir -Force
 # Install to user's local bin
 $installDir = Join-Path $env:LOCALAPPDATA "idops"
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
-Copy-Item (Join-Path $tmpDir "$binary.exe") (Join-Path $installDir "$binary.exe") -Force
 
-# Install dashboard if present in archive
-$dashboardSrc = Join-Path $tmpDir "dashboard"
-if (Test-Path $dashboardSrc) {
+# Find binary (may be at root or inside a subdirectory)
+$binaryFile = Get-ChildItem -Path $tmpDir -Recurse -Filter "$binary.exe" | Select-Object -First 1
+if (-not $binaryFile) {
+    Write-Host "Error: $binary.exe not found in archive" -ForegroundColor Red
+    exit 1
+}
+Copy-Item $binaryFile.FullName (Join-Path $installDir "$binary.exe") -Force
+
+# Find and install dashboard if present
+$dashboardSrc = Get-ChildItem -Path $tmpDir -Recurse -Directory -Filter "dashboard" | Select-Object -First 1
+if ($dashboardSrc) {
     $dashboardDest = Join-Path $installDir "dashboard"
     if (Test-Path $dashboardDest) { Remove-Item -Recurse -Force $dashboardDest }
-    Copy-Item $dashboardSrc $dashboardDest -Recurse -Force
+    Copy-Item $dashboardSrc.FullName $dashboardDest -Recurse -Force
     Write-Host "  Dashboard installed" -ForegroundColor Green
+} else {
+    Write-Host "  Warning: Dashboard not found in archive" -ForegroundColor Yellow
 }
 
 # Add to PATH if not already there
