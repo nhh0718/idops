@@ -179,19 +179,46 @@ func replaceBinary(archivePath, currentPath string) error {
 		return fmt.Errorf("binary not found in archive")
 	}
 
-	// Replace binary: rename current -> .old, copy new -> current
-	oldPath := currentPath + ".old"
-	os.Remove(oldPath)
-
-	if err := os.Rename(currentPath, oldPath); err != nil {
-		return fmt.Errorf("cannot rename current binary: %w", err)
+	// Replace binary
+	// Windows locks the running exe, so we copy new binary next to it
+	// and use a helper script to swap after this process exits.
+	if runtime.GOOS == "windows" {
+		newPath := currentPath + ".new"
+		os.Remove(newPath)
+		if err := copyFile(extractedBinary, newPath); err != nil {
+			return fmt.Errorf("cannot write new binary: %w", err)
+		}
+		// Create a batch script that waits, swaps, and cleans up
+		batPath := filepath.Join(filepath.Dir(currentPath), "idops-update.bat")
+		batContent := fmt.Sprintf("@echo off\r\n"+
+			"timeout /t 2 /nobreak >nul\r\n"+
+			"del \"%s\"\r\n"+
+			"move \"%s\" \"%s\"\r\n"+
+			"del \"%s\"\r\n",
+			currentPath, newPath, currentPath, batPath)
+		if err := os.WriteFile(batPath, []byte(batContent), 0755); err != nil {
+			return fmt.Errorf("cannot create update script: %w", err)
+		}
+		// Launch the batch script detached
+		cmd := exec.Command("cmd", "/C", "start", "/b", batPath)
+		if err := cmd.Start(); err != nil {
+			return fmt.Errorf("cannot launch update script: %w", err)
+		}
+		fmt.Println("  ⏳ Update will complete in a few seconds after exit...")
+	} else {
+		// Unix: rename is atomic and works on running binaries
+		oldPath := currentPath + ".old"
+		os.Remove(oldPath)
+		if err := os.Rename(currentPath, oldPath); err != nil {
+			return fmt.Errorf("cannot rename current binary: %w", err)
+		}
+		if err := copyFile(extractedBinary, currentPath); err != nil {
+			os.Rename(oldPath, currentPath) // rollback
+			return err
+		}
+		os.Chmod(currentPath, 0755)
+		os.Remove(oldPath)
 	}
-
-	if err := copyFile(extractedBinary, currentPath); err != nil {
-		os.Rename(oldPath, currentPath) // rollback
-		return err
-	}
-	os.Remove(oldPath)
 
 	// Copy dashboard if present in archive → ~/.idops/dashboard
 	extractedDashboard := filepath.Join(tmpDir, "dashboard")
