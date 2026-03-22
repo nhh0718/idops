@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nhh0718/idops/internal/ports"
 	"github.com/spf13/cobra"
 )
 
@@ -78,18 +79,26 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 	yellow := "\033[33m"
 	reset := "\033[0m"
 
-	// Auto-find free port if requested port is busy
+	// Kill any previous dashboard instance on target port
 	if !isPortFree(dashboardPort) {
-		if dashboardPort == "3000" {
-			// Only auto-switch for default port
-			newPort := findFreePort(3001, 3100)
-			if newPort == "" {
-				return fmt.Errorf("port %s is in use and no free port found (3001-3100)", dashboardPort)
+		fmt.Printf("%s🔄 Port %s đang bị chiếm, đang dọn dẹp...%s\n", yellow, dashboardPort, reset)
+		_ = ports.KillByPort(uint32(mustAtoi(dashboardPort)))
+		time.Sleep(1 * time.Second) // Grace period for port release
+
+		// Recheck after kill
+		if !isPortFree(dashboardPort) {
+			if dashboardPort == "3000" {
+				newPort := findFreePort(3001, 3100)
+				if newPort == "" {
+					return fmt.Errorf("port %s vẫn bị chiếm sau khi kill, không tìm được port trống (3001-3100)", dashboardPort)
+				}
+				fmt.Printf("%s⚠️  Không thể giải phóng port %s, chuyển sang port %s%s\n", yellow, dashboardPort, newPort, reset)
+				dashboardPort = newPort
+			} else {
+				return fmt.Errorf("port %s is still in use after cleanup. Try --port with a different port", dashboardPort)
 			}
-			fmt.Printf("%s⚠️  Port %s đang bị chiếm, chuyển sang port %s%s\n", yellow, dashboardPort, newPort, reset)
-			dashboardPort = newPort
 		} else {
-			return fmt.Errorf("port %s is already in use. Try a different port with --port", dashboardPort)
+			fmt.Printf("%s✅ Port %s đã được giải phóng%s\n", green, dashboardPort, reset)
 		}
 	}
 
@@ -130,7 +139,10 @@ func runDashboard(cmd *cobra.Command, args []string) error {
 	npmCmd.Dir = dashboardPath
 	npmCmd.Stdout = os.Stdout
 	npmCmd.Stderr = os.Stderr
-	npmCmd.Env = append(os.Environ(), "IDOPS_CLI_PATH="+execPath)
+	npmCmd.Env = append(os.Environ(),
+		"PORT="+dashboardPort,
+		"IDOPS_CLI_PATH="+execPath,
+	)
 
 	// Wait for server to be ready
 	serverURL := fmt.Sprintf("http://localhost:%s", dashboardPort)
@@ -234,4 +246,11 @@ func findFreePort(start, end int) string {
 		}
 	}
 	return ""
+}
+
+// mustAtoi converts string to int, returns 0 on error.
+func mustAtoi(s string) int {
+	var n int
+	fmt.Sscanf(s, "%d", &n)
+	return n
 }
