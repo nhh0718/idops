@@ -5,6 +5,7 @@ import {
   Check,
   Clock,
   Download,
+  Key,
   KeyRound,
   Pencil,
   Plug,
@@ -44,6 +45,18 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
   const [testingAll, setTestingAll] = useState(false);
   const [filter, setFilter] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showKeygen, setShowKeygen] = useState(false);
+  const [keygenForm, setKeygenForm] = useState({
+    name: "id_ed25519",
+    type: "ed25519" as "ed25519" | "rsa",
+    bits: 4096,
+    comment: "",
+  });
+  const [keygenResult, setKeygenResult] = useState<{
+    privateKey?: string;
+    publicKey?: string;
+  } | null>(null);
+  const [keygenLoading, setKeygenLoading] = useState(false);
 
   useEffect(() => {
     loadHosts();
@@ -95,6 +108,41 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
   function showStatus(text: string, isError = false) {
     setStatusMsg({ text, isError });
     setTimeout(() => setStatusMsg(null), 3000);
+  }
+
+  async function generateKey() {
+    setKeygenLoading(true);
+    setKeygenResult(null);
+    try {
+      const result = await sshApi.keygen(keygenForm);
+      if (result.success) {
+        setKeygenResult({ privateKey: result.privateKey, publicKey: result.publicKey });
+        showStatus(t("ssh.keygen.success"));
+      } else {
+        showStatus(result.error || t("ssh.keygen.error"), true);
+      }
+    } catch {
+      showStatus(t("ssh.keygen.error"), true);
+    } finally {
+      setKeygenLoading(false);
+    }
+  }
+
+  async function handleExport() {
+    try {
+      const hosts = await sshApi.export();
+      const json = JSON.stringify(hosts, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ssh-hosts.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      showStatus(`${t("ssh.export")} OK — ${hosts.length} host(s)`);
+    } catch {
+      showStatus(t("ssh.export") + " thất bại", true);
+    }
   }
 
   function openAddForm() {
@@ -175,13 +223,23 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
             <TestTube size={14} />
             {testingAll ? t("ssh.testing") : t("ssh.testAll")}
           </button>
-          <button className="flex items-center gap-2 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-all">
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-all"
+          >
             <Download size={14} />
             {t("ssh.export")}
           </button>
           <button className="flex items-center gap-2 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-all">
             <Upload size={14} />
             {t("ssh.import")}
+          </button>
+          <button
+            onClick={() => { setShowKeygen(true); setKeygenResult(null); }}
+            className="flex items-center gap-2 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:border-[var(--warning)]/30 transition-all"
+          >
+            <Key size={14} />
+            {t("ssh.generateKey")}
           </button>
           <button
             onClick={openAddForm}
@@ -510,6 +568,106 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
                 className="px-4 py-2 rounded-lg bg-[var(--danger)]/20 border border-[var(--danger)]/30 text-sm text-[var(--danger)] hover:bg-[var(--danger)]/30 transition-colors"
               >
                 {t("common.delete")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Keygen Modal */}
+      {showKeygen && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowKeygen(false)}
+        >
+          <div
+            className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
+              <h3 className="text-sm font-bold text-[var(--color-foreground)] flex items-center gap-2">
+                <Key size={16} className="text-[var(--warning)]" />
+                {t("ssh.keygen.title")}
+              </h3>
+              <button
+                onClick={() => setShowKeygen(false)}
+                className="text-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="block text-xs text-[var(--color-muted)] mb-1">
+                  {t("ssh.keygen.name")}
+                </label>
+                <input
+                  type="text"
+                  value={keygenForm.name}
+                  onChange={(e) => setKeygenForm((f) => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--color-muted)] mb-1">
+                  {t("ssh.keygen.type")}
+                </label>
+                <select
+                  value={keygenForm.type}
+                  onChange={(e) => setKeygenForm((f) => ({ ...f, type: e.target.value as "ed25519" | "rsa" }))}
+                  className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
+                >
+                  <option value="ed25519">ed25519</option>
+                  <option value="rsa">rsa</option>
+                </select>
+              </div>
+              {keygenForm.type === "rsa" && (
+                <div>
+                  <label className="block text-xs text-[var(--color-muted)] mb-1">
+                    {t("ssh.keygen.bits")}
+                  </label>
+                  <input
+                    type="number"
+                    value={keygenForm.bits}
+                    onChange={(e) => setKeygenForm((f) => ({ ...f, bits: Number(e.target.value) }))}
+                    className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-xs text-[var(--color-muted)] mb-1">
+                  {t("ssh.keygen.comment")}
+                </label>
+                <input
+                  type="text"
+                  placeholder="you@example.com"
+                  value={keygenForm.comment}
+                  onChange={(e) => setKeygenForm((f) => ({ ...f, comment: e.target.value }))}
+                  className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary)]"
+                />
+              </div>
+              {keygenResult && (
+                <div className="bg-[var(--color-background)] rounded-lg p-3 space-y-1 font-mono text-xs">
+                  <p className="text-[var(--color-muted)]">{t("ssh.keygen.privateKey")}:</p>
+                  <p className="text-[var(--success)] break-all">{keygenResult.privateKey}</p>
+                  <p className="text-[var(--color-muted)] mt-1">{t("ssh.keygen.publicKey")}:</p>
+                  <p className="text-[var(--info)] break-all">{keygenResult.publicKey}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 justify-end px-5 py-4 border-t border-[var(--color-border)]">
+              <button
+                onClick={() => setShowKeygen(false)}
+                className="px-4 py-2 rounded-lg bg-[var(--color-background)] border border-[var(--color-border)] text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-colors"
+              >
+                {t("ssh.form.cancel")}
+              </button>
+              <button
+                onClick={generateKey}
+                disabled={keygenLoading}
+                className="px-4 py-2 rounded-lg bg-[var(--warning)]/20 border border-[var(--warning)]/30 text-sm text-[var(--warning)] hover:bg-[var(--warning)]/30 transition-colors disabled:opacity-50"
+              >
+                {keygenLoading ? t("ssh.keygen.generating") : t("ssh.keygen.generate")}
               </button>
             </div>
           </div>

@@ -15,6 +15,22 @@ import (
 	internalssh "github.com/nhh0718/idops/internal/ssh"
 )
 
+// exportJSON writes hosts as a JSON array to w.
+func exportJSON(hosts []internalssh.SSHHost, w io.Writer) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(hosts)
+}
+
+// importFromJSON tries to parse data as a JSON array of SSHHost.
+func importFromJSON(data []byte) ([]internalssh.SSHHost, error) {
+	var hosts []internalssh.SSHHost
+	if err := json.Unmarshal(data, &hosts); err != nil {
+		return nil, err
+	}
+	return hosts, nil
+}
+
 var sshJSON bool
 
 func init() {
@@ -27,6 +43,11 @@ func init() {
 
 	sshCmd.Flags().BoolVar(&sshJSON, "json", false, "Output SSH hosts as JSON")
 	sshTestCmd.Flags().Bool("json", false, "Output test results as JSON")
+
+	sshExportCmd.Flags().Bool("raw", false, "Xuất raw ssh config text thay vì JSON")
+	sshExportCmd.Flags().String("file", "", "Lưu vào file thay vì stdout")
+
+	sshImportCmd.Flags().Bool("dry-run", false, "Xem trước mà không ghi vào config")
 }
 
 var sshCmd = &cobra.Command{
@@ -120,40 +141,92 @@ var sshTestCmd = &cobra.Command{
 
 var sshExportCmd = &cobra.Command{
 	Use:   "export",
-	Short: "Print the SSH config file",
+	Short: "Xuất danh sách SSH host ra JSON (mặc định) hoặc raw config",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		path := defaultSSHConfigPath()
-		f, err := os.Open(path)
-		if err != nil {
+		raw, _ := cmd.Flags().GetBool("raw")
+		filePath, _ := cmd.Flags().GetString("file")
+
+		if raw {
+			// Legacy: print raw ssh config text
+			path := defaultSSHConfigPath()
+			f, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			_, err = io.Copy(os.Stdout, f)
 			return err
 		}
-		defer f.Close()
-		_, err = io.Copy(os.Stdout, f)
-		return err
+
+		hosts, err := internalssh.LoadConfig(defaultSSHConfigPath())
+		if err != nil {
+			return fmt.Errorf("đọc ssh config thất bại: %w", err)
+		}
+
+		var out io.Writer = os.Stdout
+		var f *os.File
+		if filePath != "" {
+			f, err = os.Create(filePath)
+			if err != nil {
+				return fmt.Errorf("không thể tạo file %s: %w", filePath, err)
+			}
+			defer f.Close()
+			out = f
+		}
+
+		if err := exportJSON(hosts, out); err != nil {
+			return err
+		}
+		if filePath != "" {
+			fmt.Printf("Đã export %d host(s) ra %s\n", len(hosts), filePath)
+		}
+		return nil
 	},
 }
 
 var sshImportCmd = &cobra.Command{
 	Use:   "import <file>",
-	Short: "Append hosts from a file into SSH config",
+	Short: "Nhập host từ file JSON hoặc ssh_config vào SSH config",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		srcPath := args[0]
-		hosts, err := internalssh.LoadConfig(srcPath)
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+
+		data, err := os.ReadFile(srcPath)
 		if err != nil {
-			return fmt.Errorf("reading import file: %w", err)
+			return fmt.Errorf("không thể đọc file %s: %w", srcPath, err)
 		}
+
+		// Auto-detect: try JSON first, then fall back to ssh_config format
+		hosts, jsonErr := importFromJSON(data)
+		if jsonErr != nil {
+			hosts, err = internalssh.LoadConfig(srcPath)
+			if err != nil {
+				return fmt.Errorf("đọc file import thất bại (không phải JSON hoặc ssh_config hợp lệ): %w", err)
+			}
+		}
+
 		if len(hosts) == 0 {
-			fmt.Println("No hosts found in import file.")
+			fmt.Println("Không tìm thấy host nào trong file import.")
 			return nil
 		}
+
+		if dryRun {
+			fmt.Printf("[Dry-run] Sẽ import %d host(s):\n", len(hosts))
+			for _, h := range hosts {
+				fmt.Printf("  - %s (%s@%s)\n", h.Name, h.User, h.Hostname)
+			}
+			return nil
+		}
+
 		destPath := defaultSSHConfigPath()
 		for _, h := range hosts {
 			if err := internalssh.AddHost(destPath, h); err != nil {
-				return fmt.Errorf("adding host %q: %w", h.Name, err)
+				return fmt.Errorf("thêm host %q thất bại: %w", h.Name, err)
 			}
+			fmt.Printf("Đã import host: %s\n", h.Name)
 		}
-		fmt.Printf("Imported %d host(s) into %s\n", len(hosts), destPath)
+		fmt.Printf("Đã import %d host(s) từ %s\n", len(hosts), srcPath)
 		return nil
 	},
 }

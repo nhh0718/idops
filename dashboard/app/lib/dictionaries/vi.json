@@ -81,7 +81,21 @@
     "testing": "Đang kiểm tra...",
     "export": "Xuất",
     "import": "Nhập",
+    "generateKey": "Tạo SSH Key",
     "addHost": "Thêm máy chủ",
+    "keygen": {
+      "title": "Tạo SSH Key mới",
+      "name": "Tên key",
+      "type": "Loại key",
+      "bits": "Số bit RSA",
+      "comment": "Comment (email)",
+      "generate": "Tạo key",
+      "generating": "Đang tạo...",
+      "success": "Đã tạo SSH key thành công",
+      "error": "Tạo SSH key thất bại",
+      "privateKey": "Khóa riêng tư",
+      "publicKey": "Khóa công khai"
+    },
     "stats": {
       "total": "Tổng số",
       "connected": "Đã kết nối",

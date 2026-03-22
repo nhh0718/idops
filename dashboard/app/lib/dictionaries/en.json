@@ -81,7 +81,21 @@
     "testing": "Testing...",
     "export": "Export",
     "import": "Import",
+    "generateKey": "Generate Key",
     "addHost": "Add Host",
+    "keygen": {
+      "title": "Generate SSH Key",
+      "name": "Key Name",
+      "type": "Key Type",
+      "bits": "RSA Bits",
+      "comment": "Comment (email)",
+      "generate": "Generate",
+      "generating": "Generating...",
+      "success": "SSH key generated",
+      "error": "Failed to generate key",
+      "privateKey": "Private Key",
+      "publicKey": "Public Key"
+    },
     "stats": {
       "total": "Total",
       "connected": "Connected",

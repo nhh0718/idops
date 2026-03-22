@@ -20,9 +20,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ results });
   } catch (error) {
     console.error("SSH test error:", error);
-    return NextResponse.json(
-      { error: "Failed to test SSH connections", results: [] },
-      { status: 500 }
-    );
+    return NextResponse.json({ results: [], unavailable: true });
   }
 }

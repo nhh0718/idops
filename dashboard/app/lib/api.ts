@@ -73,10 +73,31 @@ export const sshApi = {
       Latency: string;
       Error?: string;
     }[];
+    unavailable?: boolean;
   }> => {
     const params = host ? `?host=${host}` : "";
     const res = await fetch(`${API_BASE}/ssh/test${params}`);
     return res.json();
+  },
+
+  keygen: async (opts: {
+    name?: string;
+    type?: "ed25519" | "rsa";
+    bits?: number;
+    comment?: string;
+  }): Promise<{ success: boolean; privateKey?: string; publicKey?: string; error?: string }> => {
+    const res = await fetch(`${API_BASE}/ssh/keygen`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(opts),
+    });
+    return res.json();
+  },
+
+  export: async (): Promise<SSHHost[]> => {
+    const res = await fetch(`${API_BASE}/ssh/export`);
+    const data = await res.json();
+    return data.hosts || [];
   },
 };
 
