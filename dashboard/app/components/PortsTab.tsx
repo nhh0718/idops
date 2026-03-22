@@ -14,11 +14,6 @@ import { useEffect, useState } from "react";
 import { portsApi } from "../lib/api";
 import type { PortEntry } from "../types";
 
-interface PortsTabProps {
-  ports: PortEntry[];
-  setPorts: React.Dispatch<React.SetStateAction<PortEntry[]>>;
-}
-
 type SortField = "port" | "pid" | "process" | "protocol";
 
 export default function PortsTab({
@@ -131,15 +126,12 @@ export default function PortsTab({
     }
   }
 
-  function killProcess(entry: PortEntry) {
-    setPorts((prev) =>
-      prev.filter((p) => !(p.port === entry.port && p.pid === entry.pid)),
-    );
-    showStatus(
-      `Killed ${entry.process} (PID ${entry.pid}) on port ${entry.port}`,
-    );
-    setConfirmKill(null);
-  }
+  // Watch mode: auto-refresh
+  useEffect(() => {
+    if (!watchMode) return;
+    const interval = setInterval(loadPorts, 2000);
+    return () => clearInterval(interval);
+  }, [watchMode, protocolFilter, portRange]);
 
   function openInBrowser(port: number) {
     window.open(`http://localhost:${port}`, "_blank");
@@ -389,7 +381,7 @@ export default function PortsTab({
                 Cancel
               </button>
               <button
-                onClick={() => killProcess(confirmKill)}
+                onClick={() => handleKill(confirmKill)}
                 className="px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-sm text-red-400 hover:bg-red-500/30 transition-colors"
               >
                 Kill Process

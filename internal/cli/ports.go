@@ -40,6 +40,7 @@ func init() {
 	f.Bool("plain", false, "output as plain text table and exit")
 	f.String("port", "", "port range filter, e.g. 1024-65535 or 80")
 	f.String("protocol", "", "protocol filter: tcp or udp")
+	f.BoolP("all", "a", false, "show all ports including system processes")
 
 	portsCmd.AddCommand(portsKillCmd)
 	rootCmd.AddCommand(portsCmd)
@@ -54,11 +55,13 @@ func runPorts(cmd *cobra.Command, _ []string) error {
 	plainMode, _ := f.GetBool("plain")
 	portFlag, _ := f.GetString("port")
 	protocol, _ := f.GetString("protocol")
+	showAll, _ := f.GetBool("all")
 
 	opts, err := buildScanOptions(portFlag, protocol)
 	if err != nil {
 		return err
 	}
+	opts.ShowSystem = showAll
 
 	if jsonMode {
 		return runJSON(opts)
