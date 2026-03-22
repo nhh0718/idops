@@ -37,14 +37,17 @@ func runEnvMenu(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println()
-	fmt.Print(lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280")).Render("  Chọn [1-5] hoặc q để thoát: "))
+	fmt.Print(lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280")).Render("  Chọn [1-5], b: quay lại, q: thoát: "))
 
 	reader := bufio.NewReader(os.Stdin)
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(input)
 
-	if input == "q" || input == "" {
-		return nil
+	if input == "q" || input == "Q" {
+		os.Exit(0)
+	}
+	if input == "b" || input == "B" || input == "" {
+		return nil // return to main menu
 	}
 
 	subCmds := []string{"compare", "sync", "validate", "init", "show"}
