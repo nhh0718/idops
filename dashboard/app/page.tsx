@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import DockerTab from "./components/DockerTab";
 import EnvTab from "./components/EnvTab";
 import NginxTab from "./components/NginxTab";
@@ -8,7 +8,8 @@ import OverviewTab from "./components/OverviewTab";
 import PortsTab from "./components/PortsTab";
 import Sidebar, { type TabId } from "./components/Sidebar";
 import SSHTab from "./components/SSHTab";
-import { dockerApi, portsApi, sshApi, envApi } from "./lib/api";
+import ThemeLangToggle from "./components/ThemeLangToggle";
+import { dockerApi, envApi, portsApi, sshApi } from "./lib/api";
 import type { DockerContainer, EnvVariable, PortEntry, SSHHost } from "./types";
 
 export default function Home() {
@@ -24,12 +25,13 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [portsData, dockerData, sshData, envData] = await Promise.allSettled([
-        portsApi.scan(),
-        dockerApi.list(),
-        sshApi.list(),
-        envApi.show(),
-      ]);
+      const [portsData, dockerData, sshData, envData] =
+        await Promise.allSettled([
+          portsApi.scan(),
+          dockerApi.list(),
+          sshApi.list(),
+          envApi.show(),
+        ]);
 
       if (portsData.status === "fulfilled") setPorts(portsData.value);
       if (dockerData.status === "fulfilled") setContainers(dockerData.value);
@@ -67,6 +69,9 @@ export default function Home() {
           sidebarCollapsed ? "ml-[68px]" : "ml-[240px]"
         }`}
       >
+        <div className="flex justify-end p-4 border-b border-[var(--color-border)]">
+          <ThemeLangToggle />
+        </div>
         <div className="p-6 max-w-[1400px]">
           {loading ? (
             <div className="flex items-center justify-center h-[60vh]">

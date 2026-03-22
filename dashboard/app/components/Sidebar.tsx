@@ -1,16 +1,18 @@
 "use client";
 
 import {
-  LayoutDashboard,
-  Container,
-  Search,
-  KeyRound,
-  FileCode,
-  Server,
-  Terminal,
   ChevronLeft,
   ChevronRight,
+  Container,
+  FileCode,
+  KeyRound,
+  LayoutDashboard,
+  Search,
+  Server,
+  Terminal,
 } from "lucide-react";
+
+import { useI18n } from "../lib/i18n";
 
 export type TabId = "overview" | "docker" | "ports" | "ssh" | "env" | "nginx";
 
@@ -21,16 +23,56 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
-const menuItems: { id: TabId; label: string; icon: React.ReactNode; desc: string }[] = [
-  { id: "overview", label: "Overview", icon: <LayoutDashboard size={20} />, desc: "System overview" },
-  { id: "docker", label: "Docker", icon: <Container size={20} />, desc: "Container management" },
-  { id: "ports", label: "Ports", icon: <Search size={20} />, desc: "Port scanner" },
-  { id: "ssh", label: "SSH", icon: <KeyRound size={20} />, desc: "SSH host manager" },
-  { id: "env", label: "Env", icon: <FileCode size={20} />, desc: "Environment files" },
-  { id: "nginx", label: "Nginx", icon: <Server size={20} />, desc: "Config generator" },
+const getMenuItems = (
+  t: (key: string) => string,
+): { id: TabId; label: string; icon: React.ReactNode; desc: string }[] => [
+  {
+    id: "overview",
+    label: t("sidebar.overview"),
+    icon: <LayoutDashboard size={20} />,
+    desc: t("sidebar.overviewDesc"),
+  },
+  {
+    id: "docker",
+    label: t("sidebar.docker"),
+    icon: <Container size={20} />,
+    desc: t("sidebar.dockerDesc"),
+  },
+  {
+    id: "ports",
+    label: t("sidebar.ports"),
+    icon: <Search size={20} />,
+    desc: t("sidebar.portsDesc"),
+  },
+  {
+    id: "ssh",
+    label: t("sidebar.ssh"),
+    icon: <KeyRound size={20} />,
+    desc: t("sidebar.sshDesc"),
+  },
+  {
+    id: "env",
+    label: t("sidebar.env"),
+    icon: <FileCode size={20} />,
+    desc: t("sidebar.envDesc"),
+  },
+  {
+    id: "nginx",
+    label: t("sidebar.nginx"),
+    icon: <Server size={20} />,
+    desc: t("sidebar.nginxDesc"),
+  },
 ];
 
-export default function Sidebar({ activeTab, onTabChange, collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({
+  activeTab,
+  onTabChange,
+  collapsed,
+  onToggle,
+}: SidebarProps) {
+  const { t } = useI18n();
+  const menuItems = getMenuItems(t);
+
   return (
     <aside
       className={`fixed left-0 top-0 h-full bg-[var(--color-sidebar)] border-r border-[var(--color-border)] z-50 flex flex-col transition-all duration-300 ${
@@ -43,8 +85,12 @@ export default function Sidebar({ activeTab, onTabChange, collapsed, onToggle }:
         </div>
         {!collapsed && (
           <div className="animate-fade-in">
-            <h1 className="text-base font-bold text-white tracking-tight">idops</h1>
-            <p className="text-[10px] text-[var(--color-muted)] -mt-0.5">DevOps Toolkit</p>
+            <h1 className="text-base font-bold text-white tracking-tight">
+              idops
+            </h1>
+            <p className="text-[10px] text-[var(--color-muted)] -mt-0.5">
+              DevOps Toolkit
+            </p>
           </div>
         )}
       </div>
@@ -65,7 +111,9 @@ export default function Sidebar({ activeTab, onTabChange, collapsed, onToggle }:
             {!collapsed && (
               <div className="text-left animate-fade-in">
                 <div className="text-sm font-medium">{item.label}</div>
-                <div className={`text-[10px] ${activeTab === item.id ? "text-purple-200" : "text-[var(--color-muted)]"}`}>
+                <div
+                  className={`text-[10px] ${activeTab === item.id ? "text-purple-200" : "text-[var(--color-muted)]"}`}
+                >
                   {item.desc}
                 </div>
               </div>

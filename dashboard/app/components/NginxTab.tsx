@@ -15,27 +15,16 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { nginxApi } from "../lib/api";
+import { useI18n } from "../lib/i18n";
 import type { NginxConfig } from "../types";
 
-const templates = [
-  {
-    value: "reverse-proxy",
-    label: "Reverse Proxy",
-    desc: "Upstream proxy sites",
-  },
-  { value: "static-site", label: "Static Site", desc: "Serve static files" },
-  { value: "php-fpm", label: "PHP-FPM", desc: "PHP applications" },
-  {
-    value: "load-balancer",
-    label: "Load Balancer",
-    desc: "Upstream load balancing",
-  },
-  {
-    value: "websocket",
-    label: "WebSocket Proxy",
-    desc: "WebSocket connections",
-  },
-];
+const templatesList = [
+  "reverse-proxy",
+  "static-site",
+  "php-fpm",
+  "load-balancer",
+  "websocket",
+] as const;
 
 function generateNginxConfig(config: NginxConfig): string {
   const lines: string[] = [];
@@ -170,6 +159,7 @@ export default function NginxTab({
 }: {
   configs: string[];
 }) {
+  const { t } = useI18n();
   const [config, setConfig] = useState<NginxConfig>({
     template: "reverse-proxy",
     serverName: "example.com",
@@ -286,12 +276,12 @@ export default function NginxTab({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Server size={24} className="text-rose-400" />
-            Nginx Config Generator
+          <h2 className="text-2xl font-bold text-[var(--color-foreground)] flex items-center gap-3">
+            <Server size={24} className="text-[var(--danger)]" />
+            {t("nginx.title")}
           </h2>
           <p className="text-sm text-[var(--color-muted)] mt-1">
-            Generate, validate, and manage nginx configurations from templates
+            {t("nginx.subtitle")}
           </p>
         </div>
       </div>
@@ -315,7 +305,7 @@ export default function NginxTab({
           },
           {
             id: "validate" as const,
-            label: "Validate",
+            label: t("nginx.actions.test"),
             icon: <Shield size={14} />,
           },
           {
@@ -330,7 +320,7 @@ export default function NginxTab({
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-medium transition-all ${
               activeSubTab === tab.id
                 ? "bg-[var(--color-primary)] text-white"
-                : "text-[var(--color-muted)] hover:text-white hover:bg-[var(--color-card-hover)]"
+                : "text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-card-hover)]"
             }`}
           >
             {tab.icon}
@@ -347,31 +337,57 @@ export default function NginxTab({
             {/* Template Selection */}
             <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
               <h4 className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider mb-3">
-                Template
+                {t("nginx.generate.template")}
               </h4>
               <div className="grid grid-cols-1 gap-2">
-                {templates.map((t) => (
+                {[
+                  {
+                    value: "reverse-proxy",
+                    label: t("nginx.templates.reverseProxy.label"),
+                    desc: t("nginx.templates.reverseProxy.desc"),
+                  },
+                  {
+                    value: "static-site",
+                    label: t("nginx.templates.staticSite.label"),
+                    desc: t("nginx.templates.staticSite.desc"),
+                  },
+                  {
+                    value: "php-fpm",
+                    label: t("nginx.templates.phpFpm.label"),
+                    desc: t("nginx.templates.phpFpm.desc"),
+                  },
+                  {
+                    value: "load-balancer",
+                    label: t("nginx.templates.loadBalancer.label"),
+                    desc: t("nginx.templates.loadBalancer.desc"),
+                  },
+                  {
+                    value: "websocket",
+                    label: t("nginx.templates.webSocket.label"),
+                    desc: t("nginx.templates.webSocket.desc"),
+                  },
+                ].map((tItem) => (
                   <button
-                    key={t.value}
-                    onClick={() => updateConfig("template", t.value)}
+                    key={tItem.value}
+                    onClick={() => updateConfig("template", tItem.value)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all border ${
-                      config.template === t.value
-                        ? "bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 text-white"
-                        : "bg-[var(--color-background)] border-[var(--color-border)] text-[var(--color-muted)] hover:text-white hover:border-[var(--color-border)]"
+                      config.template === tItem.value
+                        ? "bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 text-[var(--color-foreground)]"
+                        : "bg-[var(--color-background)] border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:border-[var(--color-border)]"
                     }`}
                   >
                     <Server
                       size={14}
                       className={
-                        config.template === t.value
+                        config.template === tItem.value
                           ? "text-[var(--color-primary)]"
                           : ""
                       }
                     />
                     <div>
-                      <p className="text-xs font-medium">{t.label}</p>
+                      <p className="text-xs font-medium">{tItem.label}</p>
                       <p className="text-[10px] text-[var(--color-muted)]">
-                        {t.desc}
+                        {tItem.desc}
                       </p>
                     </div>
                   </button>
@@ -382,18 +398,18 @@ export default function NginxTab({
             {/* Common Settings */}
             <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
               <h4 className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider mb-3">
-                Common Settings
+                {t("nginx.generate.commonSettings")}
               </h4>
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs text-[var(--color-muted)] mb-1">
-                    Server Name (domain)
+                    {t("nginx.labels.domain")}
                   </label>
                   <input
                     type="text"
                     value={config.serverName}
                     onChange={(e) => updateConfig("serverName", e.target.value)}
-                    className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-primary)]"
+                    className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                   />
                 </div>
                 <div>
@@ -406,7 +422,7 @@ export default function NginxTab({
                     onChange={(e) =>
                       updateConfig("listenPort", parseInt(e.target.value) || 80)
                     }
-                    className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-primary)]"
+                    className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                   />
                 </div>
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -418,7 +434,9 @@ export default function NginxTab({
                     }
                     className="rounded bg-[var(--color-background)] border-[var(--color-border)]"
                   />
-                  <span className="text-xs text-white">Enable SSL</span>
+                  <span className="text-xs text-[var(--color-foreground)]">
+                    {t("nginx.labels.enableSSL")}
+                  </span>
                 </label>
                 {config.sslEnabled && (
                   <>
@@ -432,7 +450,7 @@ export default function NginxTab({
                         onChange={(e) =>
                           updateConfig("sslCertPath", e.target.value)
                         }
-                        className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-primary)]"
+                        className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                       />
                     </div>
                     <div>
@@ -445,7 +463,7 @@ export default function NginxTab({
                         onChange={(e) =>
                           updateConfig("sslKeyPath", e.target.value)
                         }
-                        className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-primary)]"
+                        className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                       />
                     </div>
                   </>
@@ -458,7 +476,7 @@ export default function NginxTab({
               config.template === "websocket") && (
               <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
                 <h4 className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider mb-3">
-                  Proxy Settings
+                  {t("nginx.generate.proxySettings")}
                 </h4>
                 <div className="space-y-3">
                   <div>
@@ -471,7 +489,7 @@ export default function NginxTab({
                       onChange={(e) =>
                         updateConfig("upstreamHost", e.target.value)
                       }
-                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-primary)]"
+                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                     />
                   </div>
                   <div>
@@ -487,7 +505,7 @@ export default function NginxTab({
                           parseInt(e.target.value) || 3000,
                         )
                       }
-                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-primary)]"
+                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                     />
                   </div>
                   {config.template === "reverse-proxy" && (
@@ -500,7 +518,7 @@ export default function NginxTab({
                         }
                         className="rounded bg-[var(--color-background)] border-[var(--color-border)]"
                       />
-                      <span className="text-xs text-white">
+                      <span className="text-xs text-[var(--color-foreground)]">
                         Enable WebSocket support
                       </span>
                     </label>
@@ -512,7 +530,7 @@ export default function NginxTab({
             {config.template === "static-site" && (
               <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
                 <h4 className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider mb-3">
-                  Static Site Settings
+                  {t("nginx.generate.staticSettings")}
                 </h4>
                 <div className="space-y-3">
                   <div>
@@ -523,7 +541,7 @@ export default function NginxTab({
                       type="text"
                       value={config.rootPath}
                       onChange={(e) => updateConfig("rootPath", e.target.value)}
-                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-primary)]"
+                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                     />
                   </div>
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -535,7 +553,9 @@ export default function NginxTab({
                       }
                       className="rounded bg-[var(--color-background)] border-[var(--color-border)]"
                     />
-                    <span className="text-xs text-white">Enable Gzip</span>
+                    <span className="text-xs text-[var(--color-foreground)]">
+                      Enable Gzip
+                    </span>
                   </label>
                   <div>
                     <label className="block text-xs text-[var(--color-muted)] mb-1">
@@ -550,7 +570,7 @@ export default function NginxTab({
                           parseInt(e.target.value) || 0,
                         )
                       }
-                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-primary)]"
+                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                     />
                   </div>
                 </div>
@@ -560,7 +580,7 @@ export default function NginxTab({
             {config.template === "php-fpm" && (
               <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
                 <h4 className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider mb-3">
-                  PHP-FPM Settings
+                  {t("nginx.generate.phpSettings")}
                 </h4>
                 <div className="space-y-3">
                   <div>
@@ -571,7 +591,7 @@ export default function NginxTab({
                       type="text"
                       value={config.rootPath}
                       onChange={(e) => updateConfig("rootPath", e.target.value)}
-                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-primary)]"
+                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                     />
                   </div>
                   <div>
@@ -584,7 +604,7 @@ export default function NginxTab({
                       onChange={(e) =>
                         updateConfig("phpSocket", e.target.value)
                       }
-                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-primary)]"
+                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                     />
                   </div>
                 </div>
@@ -594,7 +614,7 @@ export default function NginxTab({
             {config.template === "load-balancer" && (
               <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
                 <h4 className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider mb-3">
-                  Load Balancer Settings
+                  {t("nginx.generate.loadBalancerSettings")}
                 </h4>
                 <div className="space-y-3">
                   <div>
@@ -607,7 +627,7 @@ export default function NginxTab({
                       onChange={(e) =>
                         updateConfig("upstreamName", e.target.value)
                       }
-                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-primary)]"
+                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                     />
                   </div>
                   <div>
@@ -617,7 +637,7 @@ export default function NginxTab({
                     <select
                       value={config.method}
                       onChange={(e) => updateConfig("method", e.target.value)}
-                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-primary)]"
+                      className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                     >
                       <option value="round-robin">Round Robin</option>
                       <option value="least_conn">Least Connections</option>
@@ -646,7 +666,7 @@ export default function NginxTab({
                               updateBackend(i, "host", e.target.value)
                             }
                             placeholder="Host"
-                            className="flex-1 px-2 py-1.5 bg-[var(--color-background)] border border-[var(--color-border)] rounded text-xs text-white focus:outline-none focus:border-[var(--color-primary)]"
+                            className="flex-1 px-2 py-1.5 bg-[var(--color-background)] border border-[var(--color-border)] rounded text-xs text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                           />
                           <input
                             type="number"
@@ -659,7 +679,7 @@ export default function NginxTab({
                               )
                             }
                             placeholder="Port"
-                            className="w-20 px-2 py-1.5 bg-[var(--color-background)] border border-[var(--color-border)] rounded text-xs text-white focus:outline-none focus:border-[var(--color-primary)]"
+                            className="w-20 px-2 py-1.5 bg-[var(--color-background)] border border-[var(--color-border)] rounded text-xs text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                           />
                           <input
                             type="number"
@@ -672,7 +692,7 @@ export default function NginxTab({
                               )
                             }
                             placeholder="Weight"
-                            className="w-16 px-2 py-1.5 bg-[var(--color-background)] border border-[var(--color-border)] rounded text-xs text-white focus:outline-none focus:border-[var(--color-primary)]"
+                            className="w-16 px-2 py-1.5 bg-[var(--color-background)] border border-[var(--color-border)] rounded text-xs text-[var(--color-foreground)] focus:outline-none focus:border-[var(--color-primary)]"
                           />
                           <button
                             onClick={() => removeBackend(i)}
@@ -693,34 +713,36 @@ export default function NginxTab({
           <div className="space-y-4">
             <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl overflow-hidden sticky top-4">
               <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
-                <h4 className="text-xs font-semibold text-white flex items-center gap-2">
-                  <Eye size={14} className="text-blue-400" />
-                  Preview
+                <h4 className="text-xs font-semibold text-[var(--color-foreground)] flex items-center gap-2">
+                  <Eye size={14} className="text-[var(--info)]" />
+                  {t("nginx.generate.preview")}
                 </h4>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={copyConfig}
-                    className="flex items-center gap-1 px-2 py-1 rounded text-xs text-[var(--color-muted)] hover:text-white hover:bg-[var(--color-card-hover)] transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-xs text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-card-hover)] transition-colors"
                   >
                     {copied ? (
-                      <Check size={12} className="text-emerald-400" />
+                      <Check size={12} className="text-[var(--success)]" />
                     ) : (
                       <Copy size={12} />
                     )}
-                    {copied ? "Copied!" : "Copy"}
+                    {copied
+                      ? t("nginx.generate.copied")
+                      : t("nginx.generate.copy")}
                   </button>
                   <button
                     onClick={() =>
                       showStatus(`Saved to ${config.serverName}.conf`)
                     }
-                    className="flex items-center gap-1 px-2 py-1 rounded text-xs text-[var(--color-muted)] hover:text-white hover:bg-[var(--color-card-hover)] transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-xs text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-card-hover)] transition-colors"
                   >
                     <Download size={12} />
-                    Save
+                    {t("nginx.generate.save")}
                   </button>
                 </div>
               </div>
-              <pre className="p-4 overflow-auto max-h-[60vh] text-xs font-mono text-emerald-300 leading-relaxed bg-[#0d1117]">
+              <pre className="p-4 overflow-auto max-h-[60vh] text-xs font-mono text-[var(--success)] leading-relaxed bg-[#0d1117]">
                 <code>{generatedConfig}</code>
               </pre>
             </div>
@@ -732,26 +754,26 @@ export default function NginxTab({
       {activeSubTab === "validate" && (
         <div className="space-y-4">
           <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-5">
-            <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-              <Shield size={14} className="text-emerald-400" />
-              Validate Nginx Configuration
+            <h4 className="text-sm font-semibold text-[var(--color-foreground)] mb-3 flex items-center gap-2">
+              <Shield size={14} className="text-[var(--success)]" />
+              {t("nginx.actions.test")}
             </h4>
             <p className="text-xs text-[var(--color-muted)] mb-4">
               Run{" "}
-              <code className="px-1 py-0.5 bg-[var(--color-background)] rounded text-white">
+              <code className="px-1 py-0.5 bg-[var(--color-background)] rounded text-[var(--color-foreground)]">
                 nginx -t
               </code>{" "}
               to check configuration syntax.
             </p>
             <button
-              onClick={() => showStatus("Nginx configuration is valid")}
-              className="px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-sm text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+              onClick={() => showStatus(t("nginx.testSuccess"))}
+              className="px-4 py-2 bg-[var(--success)]/20 border border-[var(--success)]/30 rounded-lg text-sm text-[var(--success)] hover:bg-[var(--success)]/30 transition-colors"
             >
-              Run Validation
+              {t("nginx.testing")}
             </button>
 
             <div className="mt-4 p-3 bg-[var(--color-background)] rounded-lg font-mono text-xs">
-              <p className="text-emerald-400">$ nginx -t</p>
+              <p className="text-[var(--success)]">$ nginx -t</p>
               <p className="text-[var(--color-muted)]">
                 nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
               </p>
@@ -759,7 +781,7 @@ export default function NginxTab({
                 nginx: configuration file /etc/nginx/nginx.conf test is
                 successful
               </p>
-              <p className="text-emerald-400 mt-2 flex items-center gap-1">
+              <p className="text-[var(--success)] mt-2 flex items-center gap-1">
                 <CheckCircle size={12} /> Configuration valid
               </p>
             </div>
@@ -771,8 +793,8 @@ export default function NginxTab({
       {activeSubTab === "list" && (
         <div className="space-y-4">
           <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-5">
-            <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-              <List size={14} className="text-blue-400" />
+            <h4 className="text-sm font-semibold text-[var(--color-foreground)] mb-3 flex items-center gap-2">
+              <List size={14} className="text-[var(--info)]" />
               Nginx Configs — /etc/nginx/sites-available
             </h4>
             <div className="space-y-2">
@@ -783,19 +805,21 @@ export default function NginxTab({
                 >
                   <div className="flex items-center gap-2">
                     <FileCode size={14} className="text-[var(--color-muted)]" />
-                    <span className="font-mono text-xs text-white">{conf}</span>
+                    <span className="font-mono text-xs text-[var(--color-foreground)]">
+                      {conf}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() =>
                         showStatus(`Applied ${conf} and reloaded nginx`)
                       }
-                      className="text-xs px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                      className="text-xs px-2 py-1 rounded bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20 transition-colors"
                     >
-                      Apply
+                      {t("nginx.actions.enable")}
                     </button>
-                    <button className="text-xs px-2 py-1 rounded bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors">
-                      View
+                    <button className="text-xs px-2 py-1 rounded bg-[var(--info)]/10 text-[var(--info)] hover:bg-[var(--info)]/20 transition-colors">
+                      {t("nginx.actions.viewConfig")}
                     </button>
                   </div>
                 </div>

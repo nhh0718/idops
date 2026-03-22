@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { sshApi } from "../lib/api";
+import { useI18n } from "../lib/i18n";
 import type { SSHHost } from "../types";
 
 const emptyHost: SSHHost = {
@@ -30,6 +31,7 @@ const emptyHost: SSHHost = {
 };
 
 export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
+  const { t } = useI18n();
   const [hosts, setHosts] = useState<SSHHost[]>(initialHosts);
   const [showForm, setShowForm] = useState(false);
   const [editingHost, setEditingHost] = useState<SSHHost | null>(null);
@@ -156,37 +158,37 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-            <KeyRound size={24} className="text-emerald-400" />
-            SSH Manager
+          <h2 className="text-2xl font-bold text-[var(--color-foreground)] flex items-center gap-3">
+            <KeyRound size={24} className="text-[var(--success)]" />
+            {t("ssh.title")}
           </h2>
           <p className="text-sm text-[var(--color-muted)] mt-1">
-            Manage SSH hosts, connect, test connectivity, import/export config
+            {t("ssh.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => testConnection()}
             disabled={testingAll}
-            className="flex items-center gap-2 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-muted)] hover:text-white hover:border-blue-500/30 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:border-[var(--info)]/30 transition-all disabled:opacity-50"
           >
             <TestTube size={14} />
-            {testingAll ? "Testing..." : "Test All"}
+            {testingAll ? t("ssh.testing") : t("ssh.testAll")}
           </button>
-          <button className="flex items-center gap-2 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-muted)] hover:text-white transition-all">
+          <button className="flex items-center gap-2 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-all">
             <Download size={14} />
-            Export
+            {t("ssh.export")}
           </button>
-          <button className="flex items-center gap-2 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-muted)] hover:text-white transition-all">
+          <button className="flex items-center gap-2 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-all">
             <Upload size={14} />
-            Import
+            {t("ssh.import")}
           </button>
           <button
             onClick={openAddForm}
             className="flex items-center gap-2 px-3 py-2 bg-[var(--color-primary)] rounded-lg text-sm text-white hover:bg-[var(--color-primary-light)] transition-all"
           >
             <Plus size={14} />
-            Add Host
+            {t("ssh.addHost")}
           </button>
         </div>
       </div>
@@ -195,20 +197,30 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
       <div className="flex gap-4">
         <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-card)] rounded-lg border border-[var(--color-border)]">
           <Server size={12} className="text-[var(--color-muted)]" />
-          <span className="text-xs text-[var(--color-muted)]">Total:</span>
-          <span className="text-xs font-bold text-white">{hosts.length}</span>
+          <span className="text-xs text-[var(--color-muted)]">
+            {t("ssh.stats.total")}:
+          </span>
+          <span className="text-xs font-bold text-[var(--color-foreground)]">
+            {hosts.length}
+          </span>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-card)] rounded-lg border border-[var(--color-border)]">
-          <Check size={12} className="text-emerald-400" />
-          <span className="text-xs text-[var(--color-muted)]">Connected:</span>
-          <span className="text-xs font-bold text-emerald-400">
+          <Check size={12} className="text-[var(--success)]" />
+          <span className="text-xs text-[var(--color-muted)]">
+            {t("ssh.stats.connected")}:
+          </span>
+          <span className="text-xs font-bold text-[var(--success)]">
             {connectedCount}
           </span>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-card)] rounded-lg border border-[var(--color-border)]">
-          <AlertCircle size={12} className="text-red-400" />
-          <span className="text-xs text-[var(--color-muted)]">Failed:</span>
-          <span className="text-xs font-bold text-red-400">{failedCount}</span>
+          <AlertCircle size={12} className="text-[var(--danger)]" />
+          <span className="text-xs text-[var(--color-muted)]">
+            {t("ssh.stats.failed")}:
+          </span>
+          <span className="text-xs font-bold text-[var(--danger)]">
+            {failedCount}
+          </span>
         </div>
       </div>
 
@@ -229,10 +241,10 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
         />
         <input
           type="text"
-          placeholder="Filter hosts..."
+          placeholder={t("ssh.filterPlaceholder")}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-white placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary)]"
+          className="w-full pl-10 pr-4 py-2.5 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary)]"
         />
       </div>
 
@@ -248,20 +260,22 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
                 <div
                   className={`w-2.5 h-2.5 rounded-full ${
                     host.status === "connected"
-                      ? "bg-emerald-400"
+                      ? "bg-[var(--success)]"
                       : host.status === "failed"
-                        ? "bg-red-400"
+                        ? "bg-[var(--danger)]"
                         : "bg-[var(--color-muted)]"
                   }`}
                 />
-                <h3 className="font-bold text-white text-sm">{host.name}</h3>
+                <h3 className="font-bold text-[var(--color-foreground)] text-sm">
+                  {host.name}
+                </h3>
               </div>
               <span
                 className={`text-[10px] px-2 py-0.5 rounded-full ${
                   host.status === "connected"
-                    ? "bg-emerald-500/10 text-emerald-400"
+                    ? "bg-[var(--success)]/10 text-[var(--success)]"
                     : host.status === "failed"
-                      ? "bg-red-500/10 text-red-400"
+                      ? "bg-[var(--danger)]/10 text-[var(--danger)]"
                       : "bg-[var(--color-muted)]/10 text-[var(--color-muted)]"
                 }`}
               >
@@ -271,35 +285,53 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
 
             <div className="space-y-1.5 mb-4 font-mono text-xs">
               <div className="flex items-center gap-2">
-                <span className="text-[var(--color-muted)] w-16">Host:</span>
-                <span className="text-white">{host.hostname}</span>
+                <span className="text-[var(--color-muted)] w-16">
+                  {t("ssh.labels.host")}:
+                </span>
+                <span className="text-[var(--color-foreground)]">
+                  {host.hostname}
+                </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[var(--color-muted)] w-16">Port:</span>
-                <span className="text-white">{host.port || "22"}</span>
+                <span className="text-[var(--color-muted)] w-16">
+                  {t("ssh.labels.port")}:
+                </span>
+                <span className="text-[var(--color-foreground)]">
+                  {host.port || "22"}
+                </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[var(--color-muted)] w-16">User:</span>
-                <span className="text-white">{host.user || "-"}</span>
+                <span className="text-[var(--color-muted)] w-16">
+                  {t("ssh.labels.user")}:
+                </span>
+                <span className="text-[var(--color-foreground)]">
+                  {host.user || "-"}
+                </span>
               </div>
               {host.identityFile && (
                 <div className="flex items-center gap-2">
-                  <span className="text-[var(--color-muted)] w-16">Key:</span>
-                  <span className="text-white truncate">
+                  <span className="text-[var(--color-muted)] w-16">
+                    {t("ssh.labels.key")}:
+                  </span>
+                  <span className="text-[var(--color-foreground)] truncate">
                     {host.identityFile}
                   </span>
                 </div>
               )}
               {host.proxyJump && (
                 <div className="flex items-center gap-2">
-                  <span className="text-[var(--color-muted)] w-16">Proxy:</span>
-                  <span className="text-white">{host.proxyJump}</span>
+                  <span className="text-[var(--color-muted)] w-16">
+                    {t("ssh.labels.proxy")}:
+                  </span>
+                  <span className="text-[var(--color-foreground)]">
+                    {host.proxyJump}
+                  </span>
                 </div>
               )}
               {host.latency && (
                 <div className="flex items-center gap-2">
                   <Clock size={10} className="text-[var(--color-muted)]" />
-                  <span className="text-emerald-400">{host.latency}</span>
+                  <span className="text-[var(--success)]">{host.latency}</span>
                 </div>
               )}
             </div>
@@ -307,30 +339,30 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
             <div className="flex items-center gap-1 pt-3 border-t border-[var(--color-border)]">
               <button
                 onClick={() => connectToHost(host)}
-                title="Connect"
-                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium transition-colors"
+                title={t("ssh.actions.connect")}
+                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20 text-xs font-medium transition-colors"
               >
-                <Plug size={12} /> Connect
+                <Plug size={12} /> {t("ssh.actions.connect")}
               </button>
               <button
                 onClick={() => testConnection(host)}
                 disabled={testingAll}
-                title="Test"
-                className="p-1.5 rounded-lg hover:bg-blue-500/10 text-[var(--color-muted)] hover:text-blue-400 transition-colors"
+                title={t("ssh.actions.test")}
+                className="p-1.5 rounded-lg hover:bg-[var(--info)]/10 text-[var(--color-muted)] hover:text-[var(--info)] transition-colors"
               >
                 <TestTube size={14} />
               </button>
               <button
                 onClick={() => openEditForm(host)}
-                title="Edit"
-                className="p-1.5 rounded-lg hover:bg-amber-500/10 text-[var(--color-muted)] hover:text-amber-400 transition-colors"
+                title={t("ssh.actions.edit")}
+                className="p-1.5 rounded-lg hover:bg-[var(--warning)]/10 text-[var(--color-muted)] hover:text-[var(--warning)] transition-colors"
               >
                 <Pencil size={14} />
               </button>
               <button
                 onClick={() => setConfirmDelete(host.name)}
-                title="Delete"
-                className="p-1.5 rounded-lg hover:bg-red-500/10 text-[var(--color-muted)] hover:text-red-400 transition-colors"
+                title={t("ssh.actions.delete")}
+                className="p-1.5 rounded-lg hover:bg-[var(--danger)]/10 text-[var(--color-muted)] hover:text-[var(--danger)] transition-colors"
               >
                 <Trash2 size={14} />
               </button>
@@ -341,12 +373,12 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
         {filtered.length === 0 && (
           <div className="col-span-full text-center py-12 text-[var(--color-muted)]">
             <KeyRound size={32} className="mx-auto mb-3 opacity-50" />
-            <p className="text-sm">No SSH hosts found</p>
+            <p className="text-sm">{t("ssh.noHosts")}</p>
             <button
               onClick={openAddForm}
               className="mt-2 text-xs text-[var(--color-primary)] hover:text-[var(--color-primary-light)]"
             >
-              Add your first host
+              {t("ssh.addFirst")}
             </button>
           </div>
         )}
@@ -363,14 +395,14 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
-              <h3 className="text-sm font-bold text-white">
+              <h3 className="text-sm font-bold text-[var(--color-foreground)]">
                 {editingHost
-                  ? `Edit Host — ${editingHost.name}`
-                  : "Add New Host"}
+                  ? `${t("ssh.form.editTitle")} — ${editingHost.name}`
+                  : t("ssh.form.addTitle")}
               </h3>
               <button
                 onClick={() => setShowForm(false)}
-                className="text-[var(--color-muted)] hover:text-white"
+                className="text-[var(--color-muted)] hover:text-[var(--color-foreground)]"
               >
                 <X size={18} />
               </button>
@@ -378,24 +410,32 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
             <div className="p-5 space-y-3">
               {[
                 {
-                  label: "Host Name *",
+                  label: t("ssh.form.name"),
                   key: "name" as const,
                   placeholder: "my-server",
                 },
                 {
-                  label: "Hostname *",
+                  label: t("ssh.form.hostname"),
                   key: "hostname" as const,
                   placeholder: "192.168.1.100",
                 },
-                { label: "Port", key: "port" as const, placeholder: "22" },
-                { label: "User", key: "user" as const, placeholder: "root" },
                 {
-                  label: "Identity File",
+                  label: t("ssh.form.port"),
+                  key: "port" as const,
+                  placeholder: "22",
+                },
+                {
+                  label: t("ssh.form.user"),
+                  key: "user" as const,
+                  placeholder: "root",
+                },
+                {
+                  label: t("ssh.form.identityFile"),
                   key: "identityFile" as const,
                   placeholder: "~/.ssh/id_rsa",
                 },
                 {
-                  label: "ProxyJump",
+                  label: t("ssh.form.proxyJump"),
                   key: "proxyJump" as const,
                   placeholder: "bastion",
                 },
@@ -415,7 +455,7 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
                       }))
                     }
                     disabled={editingHost !== null && field.key === "name"}
-                    className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-white placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary)] disabled:opacity-50"
+                    className="w-full px-3 py-2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary)] disabled:opacity-50"
                   />
                 </div>
               ))}
@@ -423,15 +463,15 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
             <div className="flex gap-3 justify-end px-5 py-4 border-t border-[var(--color-border)]">
               <button
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 rounded-lg bg-[var(--color-background)] border border-[var(--color-border)] text-sm text-[var(--color-muted)] hover:text-white transition-colors"
+                className="px-4 py-2 rounded-lg bg-[var(--color-background)] border border-[var(--color-border)] text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-colors"
               >
-                Cancel
+                {t("ssh.form.cancel")}
               </button>
               <button
                 onClick={saveHost}
                 className="px-4 py-2 rounded-lg bg-[var(--color-primary)] text-sm text-white hover:bg-[var(--color-primary-light)] transition-colors"
               >
-                {editingHost ? "Update" : "Add Host"}
+                {editingHost ? t("ssh.form.update") : t("ssh.form.add")}
               </button>
             </div>
           </div>
@@ -448,23 +488,28 @@ export default function SSHTab({ hosts: initialHosts }: { hosts: SSHHost[] }) {
             className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-6 max-w-sm w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-white mb-2">Delete Host</h3>
+            <h3 className="text-lg font-bold text-[var(--color-foreground)] mb-2">
+              {t("ssh.confirmDelete")}
+            </h3>
             <p className="text-sm text-[var(--color-muted)] mb-4">
-              Remove <strong className="text-white">{confirmDelete}</strong>{" "}
-              from SSH config? A backup will be created automatically.
+              Remove{" "}
+              <strong className="text-[var(--color-foreground)]">
+                {confirmDelete}
+              </strong>{" "}
+              {t("ssh.confirmDeleteDesc")}
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="px-4 py-2 rounded-lg bg-[var(--color-background)] border border-[var(--color-border)] text-sm text-[var(--color-muted)] hover:text-white transition-colors"
+                className="px-4 py-2 rounded-lg bg-[var(--color-background)] border border-[var(--color-border)] text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-colors"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={() => deleteHost(confirmDelete)}
-                className="px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-sm text-red-400 hover:bg-red-500/30 transition-colors"
+                className="px-4 py-2 rounded-lg bg-[var(--danger)]/20 border border-[var(--danger)]/30 text-sm text-[var(--danger)] hover:bg-[var(--danger)]/30 transition-colors"
               >
-                Delete
+                {t("common.delete")}
               </button>
             </div>
           </div>

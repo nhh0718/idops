@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { envApi } from "../lib/api";
+import { useI18n } from "../lib/i18n";
 import type { EnvValidationIssue, EnvVariable } from "../types";
 
 interface EnvTabProps {
@@ -29,6 +30,7 @@ export default function EnvTab({
 }: {
   envVars: EnvVariable[];
 }) {
+  const { t } = useI18n();
   const [envVars, setEnvVars] = useState<EnvVariable[]>(initialEnvVars);
   const [activeSubTab, setActiveSubTab] = useState<
     "show" | "compare" | "validate" | "sync" | "init"
@@ -155,19 +157,27 @@ export default function EnvTab({
   const sensitiveCount = envVars.filter((v) => v.isSensitive).length;
 
   const subTabs = [
-    { id: "show" as const, label: "Show", icon: <Eye size={14} /> },
+    { id: "show" as const, label: t("env.tabs.show"), icon: <Eye size={14} /> },
     {
       id: "compare" as const,
-      label: "Compare",
+      label: t("env.tabs.compare"),
       icon: <GitCompare size={14} />,
     },
     {
       id: "validate" as const,
-      label: "Validate",
-      icon: <CheckCircle size={14} />,
+      label: t("env.tabs.validate"),
+      icon: <Shield size={14} />,
     },
-    { id: "sync" as const, label: "Sync", icon: <RefreshCw size={14} /> },
-    { id: "init" as const, label: "Init", icon: <FileDown size={14} /> },
+    {
+      id: "sync" as const,
+      label: t("env.tabs.sync"),
+      icon: <RefreshCw size={14} />,
+    },
+    {
+      id: "init" as const,
+      label: t("env.tabs.init"),
+      icon: <FileDown size={14} />,
+    },
   ];
 
   return (
@@ -175,27 +185,43 @@ export default function EnvTab({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-            <FileCode size={24} className="text-amber-400" />
-            Environment Manager
+          <h2 className="text-2xl font-bold text-[var(--color-foreground)] flex items-center gap-3">
+            <FileCode size={24} className="text-[var(--warning)]" />
+            {t("env.title")}
           </h2>
           <p className="text-sm text-[var(--color-muted)] mt-1">
-            Compare, sync, validate, and manage .env files
+            {t("env.subtitle")}
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={loadEnvVars}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-3 py-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:border-[var(--color-primary)] transition-all disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+            {t("common.refresh")}
+          </button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="flex gap-4">
         <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-card)] rounded-lg border border-[var(--color-border)]">
-          <FileCode size={12} className="text-amber-400" />
-          <span className="text-xs text-[var(--color-muted)]">Variables:</span>
-          <span className="text-xs font-bold text-white">{envVars.length}</span>
+          <FileCode size={12} className="text-[var(--warning)]" />
+          <span className="text-xs text-[var(--color-muted)]">
+            {t("env.stats.total")}:
+          </span>
+          <span className="text-xs font-bold text-[var(--color-foreground)]">
+            {envVars.length}
+          </span>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-card)] rounded-lg border border-[var(--color-border)]">
-          <Shield size={12} className="text-red-400" />
-          <span className="text-xs text-[var(--color-muted)]">Sensitive:</span>
-          <span className="text-xs font-bold text-red-400">
+          <Shield size={12} className="text-[var(--danger)]" />
+          <span className="text-xs text-[var(--color-muted)]">
+            {t("env.stats.sensitive")}:
+          </span>
+          <span className="text-xs font-bold text-[var(--danger)]">
             {sensitiveCount}
           </span>
         </div>
@@ -204,7 +230,7 @@ export default function EnvTab({
       {/* Status */}
       {statusMsg && (
         <div
-          className={`px-4 py-2 rounded-lg text-sm ${statusMsg.isError ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`}
+          className={`px-4 py-2 rounded-lg text-sm ${statusMsg.isError ? "bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/20" : "bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/20"}`}
         >
           {statusMsg.text}
         </div>
@@ -219,7 +245,7 @@ export default function EnvTab({
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-medium transition-all ${
               activeSubTab === tab.id
                 ? "bg-[var(--color-primary)] text-white"
-                : "text-[var(--color-muted)] hover:text-white hover:bg-[var(--color-card-hover)]"
+                : "text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-card-hover)]"
             }`}
           >
             {tab.icon}
@@ -239,22 +265,22 @@ export default function EnvTab({
               />
               <input
                 type="text"
-                placeholder="Filter variables..."
+                placeholder={t("env.filterPlaceholder")}
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-white placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary)]"
+                className="w-full pl-10 pr-4 py-2.5 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-foreground)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary)]"
               />
             </div>
             <button
               onClick={() => setShowSecrets(!showSecrets)}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-all border ${
                 showSecrets
-                  ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                  : "bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-muted)] hover:text-white"
+                  ? "bg-[var(--danger)]/10 border-[var(--danger)]/30 text-[var(--danger)]"
+                  : "bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-foreground)]"
               }`}
             >
               {showSecrets ? <EyeOff size={14} /> : <Eye size={14} />}
-              {showSecrets ? "Hide" : "Show"} Secrets
+              {showSecrets ? t("env.hideSecrets") : t("env.showSecrets")}
             </button>
           </div>
 
@@ -266,51 +292,69 @@ export default function EnvTab({
                     <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider w-8">
                       #
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider">
-                      Key
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider w-1/3">
+                      {t("env.table.key")}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider">
-                      Value
+                      {t("env.table.value")}
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider w-20">
-                      Actions
-                    </th>
+                    <th className="px-4 py-3 w-16"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((v, i) => (
                     <tr
                       key={v.key}
-                      className="border-b border-[var(--color-border)] hover:bg-[var(--color-card-hover)] transition-colors"
+                      className="border-b border-[var(--color-border)] hover:bg-[var(--color-card-hover)] transition-colors group"
                     >
-                      <td className="px-4 py-2.5 text-xs text-[var(--color-muted)]">
+                      <td className="px-4 py-3 text-xs text-[var(--color-muted)] font-mono">
                         {i + 1}
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {v.isSensitive && (
-                            <Shield size={12} className="text-red-400" />
-                          )}
-                          <span className="font-mono text-xs font-medium text-white">
+                          <span className="font-mono text-sm font-medium text-[var(--color-foreground)]">
                             {v.key}
                           </span>
+                          {v.isSensitive && (
+                            <div title="Sensitive variable">
+                              <Shield
+                                size={12}
+                                className="text-[var(--danger)]"
+                              />
+                            </div>
+                          )}
                         </div>
                       </td>
-                      <td className="px-4 py-2.5">
-                        <span
-                          className={`font-mono text-xs ${v.isSensitive && !showSecrets ? "text-red-400/50" : "text-[var(--color-muted)]"}`}
-                        >
-                          {maskValue(v.key, v.value)}
-                        </span>
+                      <td className="px-4 py-3 font-mono text-xs text-[var(--color-muted)]">
+                        <div className="flex items-center gap-2 max-w-[400px] xl:max-w-[600px]">
+                          <span className="truncate flex-1">
+                            {v.isSensitive && !showSecrets
+                              ? "••••••••"
+                              : v.value}
+                          </span>
+                          {v.comment && (
+                            <span className="text-[10px] text-[var(--color-muted)] italic truncate">
+                              {"// "}
+                              {v.comment}
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-4 py-2.5 text-right">
+                      <td className="px-4 py-3">
                         <button
-                          onClick={() => copyValue(v.key, v.value)}
-                          className="p-1.5 rounded hover:bg-blue-500/10 text-[var(--color-muted)] hover:text-blue-400 transition-colors"
-                          title="Copy"
+                          onClick={() => {
+                            navigator.clipboard.writeText(v.value);
+                            setCopied(v.key);
+                            setTimeout(() => setCopied(null), 2000);
+                          }}
+                          className="p-1.5 rounded-lg text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-background)] transition-all opacity-0 group-hover:opacity-100"
+                          title={t("common.copy")}
                         >
                           {copied === v.key ? (
-                            <Check size={14} className="text-emerald-400" />
+                            <Check
+                              size={14}
+                              className="text-[var(--success)]"
+                            />
                           ) : (
                             <Copy size={14} />
                           )}
@@ -318,6 +362,16 @@ export default function EnvTab({
                       </td>
                     </tr>
                   ))}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="px-4 py-8 text-center text-[var(--color-muted)]"
+                      >
+                        {t("env.noVariables")}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -329,13 +383,53 @@ export default function EnvTab({
       {activeSubTab === "compare" && (
         <div className="space-y-4">
           <div className="flex items-center gap-3 text-sm">
-            <div className="px-3 py-2 bg-[var(--color-card)] rounded-lg border border-[var(--color-border)] text-white font-mono text-xs">
+            <div className="px-3 py-2 bg-[var(--color-card)] rounded-lg border border-[var(--color-border)] text-[var(--color-foreground)] font-mono text-xs">
               .env.example
             </div>
             <ArrowRight size={16} className="text-[var(--color-muted)]" />
-            <div className="px-3 py-2 bg-[var(--color-card)] rounded-lg border border-[var(--color-border)] text-white font-mono text-xs">
+            <div className="px-3 py-2 bg-[var(--color-card)] rounded-lg border border-[var(--color-border)] text-[var(--color-foreground)] font-mono text-xs">
               .env
             </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg p-3">
+              <p className="text-xs text-[var(--color-muted)] mb-1">
+                {t("env.compare.status")}
+              </p>
+              <p
+                className={`text-lg font-bold ${
+                  compareOutput.includes("MISSING") ||
+                  compareOutput.includes("EXTRA")
+                    ? "text-[var(--danger)]"
+                    : "text-[var(--success)]"
+                }`}
+              >
+                {compareOutput.includes("MISSING") ||
+                compareOutput.includes("EXTRA")
+                  ? t("env.compare.different")
+                  : t("env.compare.inSync")}
+              </p>
+            </div>
+          </div>
+          <div className="bg-[var(--color-background)] border border-[var(--color-border)] rounded-lg p-4 font-mono text-xs whitespace-pre-wrap text-[var(--color-foreground)]">
+            {compareOutput || t("env.compare.noDiff")}
+          </div>
+        </div>
+      )}
+
+      {/* Sync Tab */}
+      {activeSubTab === "sync" && (
+        <div className="space-y-4">
+          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-5">
+            <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+              <RefreshCw size={14} className="text-blue-400" />
+              Interactive Sync
+            </h4>
+            <p className="text-xs text-[var(--color-muted)] mb-4">
+              Sync missing variables from .env.example to .env. You can set
+              values for each missing variable.
+            </p>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
@@ -360,19 +454,24 @@ export default function EnvTab({
       {activeSubTab === "validate" && (
         <div className="space-y-4">
           {validationIssues.length === 0 ? (
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-6 text-center">
+            <div className="bg-[var(--success)]/10 border border-[var(--success)]/20 rounded-xl p-6 text-center">
               <CheckCircle
                 size={32}
-                className="mx-auto mb-2 text-emerald-400"
+                className="mx-auto mb-2 text-[var(--success)]"
               />
-              <p className="text-emerald-400 font-medium">No issues found!</p>
+              <p className="text-[var(--success)] font-medium">
+                {t("env.validate.noIssues")}
+              </p>
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                <AlertTriangle size={14} className="text-amber-400" />
-                <span className="text-sm text-amber-400">
-                  Found {validationIssues.length} issue(s) in .env
+              <div className="flex items-center gap-2 px-4 py-2 bg-[var(--warning)]/10 border border-[var(--warning)]/20 rounded-lg">
+                <AlertTriangle size={14} className="text-[var(--warning)]" />
+                <span className="text-sm text-[var(--warning)]">
+                  {t("env.validate.foundIssues").replace(
+                    "{count}",
+                    validationIssues.length.toString(),
+                  )}
                 </span>
               </div>
 
@@ -381,16 +480,16 @@ export default function EnvTab({
                   <thead>
                     <tr className="border-b border-[var(--color-border)]">
                       <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--color-muted)] uppercase">
-                        Line
+                        {t("env.validate.table.line")}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--color-muted)] uppercase">
-                        Key
+                        {t("env.validate.table.key")}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--color-muted)] uppercase">
-                        Type
+                        {t("env.validate.table.type")}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-[var(--color-muted)] uppercase">
-                        Message
+                        {t("env.validate.table.message")}
                       </th>
                     </tr>
                   </thead>
@@ -403,20 +502,20 @@ export default function EnvTab({
                         <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-muted)]">
                           {issue.line}
                         </td>
-                        <td className="px-4 py-2.5 font-mono text-xs text-white font-medium">
+                        <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-foreground)] font-medium">
                           {issue.key}
                         </td>
                         <td className="px-4 py-2.5">
                           <span
                             className={`text-[10px] px-2 py-0.5 rounded-full ${
                               issue.type === "empty"
-                                ? "bg-red-500/10 text-red-400"
+                                ? "bg-[var(--danger)]/10 text-[var(--danger)]"
                                 : issue.type === "duplicate"
-                                  ? "bg-purple-500/10 text-purple-400"
+                                  ? "bg-[var(--primary)]/10 text-[var(--primary)]"
                                   : issue.type === "trailing_space"
-                                    ? "bg-amber-500/10 text-amber-400"
+                                    ? "bg-[var(--warning)]/10 text-[var(--warning)]"
                                     : issue.type === "unquoted_spaces"
-                                      ? "bg-blue-500/10 text-blue-400"
+                                      ? "bg-[var(--info)]/10 text-[var(--info)]"
                                       : "bg-[var(--color-muted)]/10 text-[var(--color-muted)]"
                             }`}
                           >
@@ -436,46 +535,16 @@ export default function EnvTab({
         </div>
       )}
 
-      {/* Sync Tab */}
-      {activeSubTab === "sync" && (
-        <div className="space-y-4">
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-5">
-            <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-              <RefreshCw size={14} className="text-blue-400" />
-              Interactive Sync
-            </h4>
-            <p className="text-xs text-[var(--color-muted)] mb-4">
-              Sync missing variables from .env.example to .env. You can set
-              values for each missing variable.
-            </p>
-
-            <div className="space-y-3">
-              <p className="text-xs text-[var(--color-muted)]">
-                Sync feature will be available when differences are detected.
-              </p>
-            </div>
-
-            <button
-              onClick={() => showStatus(`Sync feature not yet implemented`)}
-              className="mt-4 px-4 py-2 bg-[var(--color-primary)] rounded-lg text-sm text-white hover:bg-[var(--color-primary-light)] transition-colors"
-            >
-              Sync Variables
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Init Tab */}
       {activeSubTab === "init" && (
         <div className="space-y-4">
           <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-5">
-            <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-              <FileDown size={14} className="text-emerald-400" />
-              Generate .env from .env.example
+            <h4 className="text-sm font-semibold text-[var(--color-foreground)] mb-3 flex items-center gap-2">
+              <FileDown size={14} className="text-[var(--success)]" />
+              {t("env.init.title")}
             </h4>
             <p className="text-xs text-[var(--color-muted)] mb-4">
-              Create a new .env file with all variables from .env.example. Set
-              values for each variable below.
+              {t("env.init.desc")}
             </p>
 
             <div className="space-y-3">
@@ -484,14 +553,16 @@ export default function EnvTab({
                   key={v.key}
                   className="flex items-center gap-3 py-2 px-3 bg-[var(--color-background)] rounded-lg border border-[var(--color-border)]"
                 >
-                  <span className="font-mono text-xs text-white font-medium w-40 flex-shrink-0">
+                  <span className="font-mono text-xs text-[var(--color-foreground)] font-medium w-40 flex-shrink-0">
                     {v.key}
                   </span>
                   <input
                     type="text"
                     defaultValue={v.isSensitive ? "" : v.value}
-                    placeholder={v.isSensitive ? "Enter value..." : v.value}
-                    className="flex-1 px-3 py-1.5 bg-[var(--color-card)] border border-[var(--color-border)] rounded text-xs text-white placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary)]"
+                    placeholder={
+                      v.isSensitive ? t("env.init.enterValue") : v.value
+                    }
+                    className="flex-1 px-3 py-1.5 bg-[var(--color-card)] border border-[var(--color-border)] rounded text-xs text-[var(--color-foreground)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary)]"
                   />
                 </div>
               ))}
@@ -504,16 +575,16 @@ export default function EnvTab({
                     `Generated .env with ${envVars.length} variable(s)`,
                   )
                 }
-                className="px-4 py-2 bg-[var(--color-primary)] rounded-lg text-sm text-white hover:bg-[var(--color-primary-light)] transition-colors"
+                className="px-4 py-2 bg-[var(--color-primary)] rounded-lg text-sm text-[var(--color-foreground)] hover:bg-[var(--color-primary-light)] transition-colors"
               >
-                Generate .env
+                {t("env.init.button")}
               </button>
               <label className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
                 <input
                   type="checkbox"
                   className="rounded bg-[var(--color-background)] border-[var(--color-border)]"
                 />
-                Force overwrite
+                {t("env.init.forceOverwrite")}
               </label>
             </div>
           </div>

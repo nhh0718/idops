@@ -1,0 +1,290 @@
+{
+  "sidebar": {
+    "overview": "Tổng quan",
+    "overviewDesc": "Tổng quan hệ thống",
+    "docker": "Quản lý Docker",
+    "dockerDesc": "Quản lý container",
+    "ports": "Quét cổng (Ports)",
+    "portsDesc": "Công cụ quét cổng",
+    "ssh": "Quản lý SSH",
+    "sshDesc": "Quản lý máy chủ SSH",
+    "env": "Biến môi trường",
+    "envDesc": "Tệp tin môi trường",
+    "nginx": "Tạo Nginx Config",
+    "nginxDesc": "Trình tạo cấu hình"
+  },
+  "common": {
+    "refresh": "Làm mới",
+    "search": "Tìm kiếm...",
+    "status": "Trạng thái",
+    "actions": "Hành động",
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "delete": "Xóa",
+    "edit": "Chỉnh sửa",
+    "add": "Thêm",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép!"
+  },
+  "overview": {
+    "title": "Tổng quan hệ thống",
+    "subtitle": "Xem nhanh trạng thái hệ thống",
+    "activeContainers": "Container gần đây",
+    "openPorts": "Cổng đang mở",
+    "sshHosts": "Máy chủ SSH",
+    "envVars": "Biến môi trường",
+    "quickActions": "Hành động nhanh",
+    "viewAll": "Xem tất cả",
+    "startAll": "Bật tất cả",
+    "stopAll": "Tắt tất cả",
+    "testAll": "Kiểm tra tất cả",
+    "scanNow": "Quét cổng"
+  },
+  "ports": {
+    "title": "Quét cổng (Ports)",
+    "subtitle": "Khám phá các cổng đang mở và quản lý tiến trình",
+    "rangePlaceholder": "vd: 1-1024 hoặc 80,443",
+    "scanSettings": "Cài đặt quét",
+    "scanning": "Đang quét",
+    "scanError": "Quét cổng thất bại",
+    "scanSuccess": "Quét cổng thành công",
+    "protocol": {
+      "tcp": "Chỉ TCP",
+      "udp": "Chỉ UDP",
+      "both": "TCP & UDP"
+    },
+    "table": {
+      "port": "Cổng",
+      "protocol": "Giao thức",
+      "status": "Trạng thái",
+      "process": "Tiến trình",
+      "pid": "PID",
+      "user": "Người dùng",
+      "actions": "Hành động"
+    },
+    "killProcess": "Đóng tiến trình",
+    "killSuccess": "Đóng tiến trình thành công",
+    "killError": "Đóng tiến trình thất bại",
+    "noPorts": "Không tìm thấy cổng nào đang mở",
+    "watchMode": "Chế độ theo dõi",
+    "stats": {
+      "total": "Tổng số mở",
+      "tcp": "Cổng TCP",
+      "udp": "Cổng UDP",
+      "privileged": "Đặc quyền (<1024)"
+    }
+  },
+  "ssh": {
+    "title": "Quản lý SSH",
+    "subtitle": "Quản lý máy chủ SSH, kết nối, kiểm tra kết nối, import/export cấu hình",
+    "testAll": "Kiểm tra tất cả",
+    "testing": "Đang kiểm tra...",
+    "export": "Xuất",
+    "import": "Nhập",
+    "addHost": "Thêm máy chủ",
+    "stats": {
+      "total": "Tổng số",
+      "connected": "Đã kết nối",
+      "failed": "Thất bại"
+    },
+    "filterPlaceholder": "Lọc máy chủ...",
+    "noHosts": "Không tìm thấy máy chủ SSH",
+    "addFirst": "Thêm máy chủ đầu tiên của bạn",
+    "form": {
+      "editTitle": "Sửa máy chủ",
+      "addTitle": "Thêm máy chủ mới",
+      "name": "Tên máy chủ *",
+      "hostname": "Hostname *",
+      "port": "Cổng",
+      "user": "Người dùng",
+      "identityFile": "Tệp tin định danh",
+      "proxyJump": "ProxyJump",
+      "cancel": "Hủy",
+      "update": "Cập nhật",
+      "add": "Thêm máy chủ"
+    },
+    "confirmDelete": "Xóa máy chủ",
+    "confirmDeleteDesc": "khỏi cấu hình SSH? Một bản sao lưu sẽ được tạo tự động.",
+    "labels": {
+      "host": "Máy chủ",
+      "port": "Cổng",
+      "user": "Người dùng",
+      "key": "Khóa",
+      "proxy": "Proxy"
+    },
+    "actions": {
+      "connect": "Kết nối",
+      "test": "Kiểm tra",
+      "edit": "Sửa",
+      "delete": "Xóa"
+    }
+  },
+  "env": {
+    "title": "Quản lý biến môi trường",
+    "subtitle": "Quản lý biến môi trường, so sánh tệp tin và xác thực cấu hình",
+    "tabs": {
+      "show": "Biến",
+      "compare": "So sánh",
+      "validate": "Xác thực",
+      "sync": "Đồng bộ",
+      "init": "Tạo mới"
+    },
+    "stats": {
+      "total": "Tổng số biến",
+      "secretsHidden": "Đã ẩn bí mật",
+      "secretsRevealed": "Đang hiện bí mật"
+    },
+    "table": {
+      "key": "Khóa",
+      "value": "Giá trị"
+    },
+    "filterPlaceholder": "Lọc biến...",
+    "showSecrets": "Hiện bí mật",
+    "hideSecrets": "Ẩn bí mật",
+    "noVariables": "Không tìm thấy biến nào",
+    "compare": {
+      "status": "Trạng thái",
+      "inSync": "Đã đồng bộ",
+      "different": "Có khác biệt",
+      "noDiff": "Không có khác biệt giữa .env và .env.example"
+    },
+    "validate": {
+      "noIssues": "Không tìm thấy lỗi nào!",
+      "foundIssues": "Tìm thấy {count} lỗi trong .env",
+      "table": {
+        "line": "Dòng",
+        "key": "Khóa",
+        "type": "Loại",
+        "message": "Tin nhắn"
+      }
+    },
+    "sync": {
+      "title": "Đồng bộ tương tác",
+      "desc": "Đồng bộ các biến còn thiếu từ .env.example sang .env. Bạn có thể đặt giá trị cho từng biến.",
+      "notAvailable": "Tính năng đồng bộ sẽ khả dụng khi phát hiện có sự khác biệt.",
+      "button": "Đồng bộ biến"
+    },
+    "init": {
+      "title": "Tạo .env từ .env.example",
+      "desc": "Tạo một tệp .env mới với tất cả các biến từ .env.example. Đặt giá trị cho từng biến bên dưới.",
+      "button": "Tạo .env",
+      "forceOverwrite": "Ghi đè",
+      "enterValue": "Nhập giá trị..."
+    }
+  },
+  "nginx": {
+    "title": "Quản lý Nginx",
+    "subtitle": "Quản lý các trang web proxy ngược, chứng chỉ SSL và cấu hình",
+    "templates": {
+      "reverseProxy": {
+        "label": "Proxy ngược",
+        "desc": "Proxy các trang web upstream"
+      },
+      "staticSite": {
+        "label": "Trang tĩnh",
+        "desc": "Phục vụ các tệp tĩnh"
+      },
+      "phpFpm": {
+        "label": "PHP-FPM",
+        "desc": "Các ứng dụng PHP"
+      },
+      "loadBalancer": {
+        "label": "Cân bằng tải",
+        "desc": "Cân bằng tải upstream"
+      },
+      "webSocket": {
+        "label": "WebSocket Proxy",
+        "desc": "Kết nối WebSocket"
+      }
+    },
+    "stats": {
+      "total": "Tổng số trang",
+      "active": "Đang hoạt động",
+      "ssl": "Đã bật SSL"
+    },
+    "searchPlaceholder": "Lọc trang web...",
+    "addSite": "Thêm trang",
+    "labels": {
+      "target": "Đích đến",
+      "ssl": "SSL",
+      "sslValid": "Hợp lệ",
+      "sslExpired": "Đã hết hạn",
+      "sslExpires": "Hết hạn",
+      "config": "Cấu hình",
+      "domain": "Tên miền",
+      "port": "Cổng đích",
+      "enableSSL": "Bật SSL Let's Encrypt",
+      "status": "Trạng thái",
+      "enabled": "Đã bật",
+      "disabled": "Đã tắt"
+    },
+    "actions": {
+      "enable": "Bật",
+      "disable": "Tắt",
+      "test": "Kiểm tra cấu hình",
+      "reload": "Tải lại",
+      "edit": "Sửa",
+      "delete": "Xóa",
+      "viewConfig": "Xem cấu hình"
+    },
+    "form": {
+      "addTitle": "Thêm trang mới",
+      "editTitle": "Sửa trang",
+      "cancel": "Hủy",
+      "save": "Lưu trang"
+    },
+    "tabs": {
+      "generate": "Tạo cấu hình",
+      "validate": "Xác thực",
+      "list": "Danh sách cấu hình"
+    },
+    "generate": {
+      "template": "Mẫu",
+      "commonSettings": "Cài đặt chung",
+      "proxySettings": "Cài đặt Proxy",
+      "staticSettings": "Cài đặt trang tĩnh",
+      "phpSettings": "Cài đặt PHP-FPM",
+      "loadBalancerSettings": "Cài đặt cân bằng tải",
+      "preview": "Xem trước",
+      "copy": "Sao chép",
+      "copied": "Đã sao chép!",
+      "save": "Lưu"
+    },
+    "confirmDelete": "Xóa trang",
+    "confirmDeleteDesc": "Bạn có chắc chắn muốn xóa cấu hình trang này không? Hành động này không thể hoàn tác.",
+    "noSites": "Chưa có trang Nginx nào được cấu hình",
+    "addFirst": "Thêm trang đầu tiên của bạn",
+    "testing": "Đang kiểm tra cấu hình...",
+    "reloading": "Đang tải lại Nginx...",
+    "testSuccess": "Kiểm tra cấu hình Nginx thành công",
+    "reloadSuccess": "Đã tải lại Nginx thành công"
+  },
+  "docker": {
+    "title": "Quản lý Docker",
+    "subtitle": "Quản lý container, xem logs và giám sát tài nguyên",
+    "searchPlaceholder": "Lọc container...",
+    "status": {
+      "running": "Đang chạy",
+      "stopped": "Đã dừng",
+      "all": "Tất cả"
+    },
+    "actions": {
+      "start": "Bắt đầu",
+      "stop": "Dừng",
+      "restart": "Khởi động lại",
+      "logs": "Xem Logs",
+      "remove": "Xóa",
+      "inspect": "Kiểm tra"
+    },
+    "table": {
+      "name": "Tên/Image",
+      "state": "Trạng thái",
+      "ports": "Cổng",
+      "stats": "Tài nguyên",
+      "created": "Đã tạo"
+    },
+    "noContainers": "Không tìm thấy container nào",
+    "confirmDelete": "Xóa Container",
+    "confirmDeleteDesc": "Bạn có chắc chắn muốn xóa container"
+  }
+}

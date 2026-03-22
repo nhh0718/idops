@@ -1,0 +1,290 @@
+{
+  "sidebar": {
+    "overview": "Overview",
+    "overviewDesc": "System overview",
+    "docker": "Docker Containers",
+    "dockerDesc": "Container management",
+    "ports": "Port Scanner",
+    "portsDesc": "Port scanner",
+    "ssh": "SSH Manager",
+    "sshDesc": "SSH host manager",
+    "env": "Env Manager",
+    "envDesc": "Environment files",
+    "nginx": "Nginx Generator",
+    "nginxDesc": "Config generator"
+  },
+  "common": {
+    "refresh": "Refresh",
+    "search": "Search...",
+    "status": "Status",
+    "actions": "Actions",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "copy": "Copy",
+    "copied": "Copied!"
+  },
+  "overview": {
+    "title": "Dashboard Overview",
+    "subtitle": "System status at a glance",
+    "activeContainers": "Recent Containers",
+    "openPorts": "Active Ports",
+    "sshHosts": "SSH Hosts",
+    "envVars": "Env Variables",
+    "quickActions": "Quick Actions",
+    "viewAll": "View All",
+    "startAll": "Start All",
+    "stopAll": "Stop All",
+    "testAll": "Test All",
+    "scanNow": "Scan Ports"
+  },
+  "ports": {
+    "title": "Port Scanner",
+    "subtitle": "Discover open ports and manage running processes",
+    "rangePlaceholder": "e.g., 1-1024 or 80,443",
+    "scanSettings": "Scan Settings",
+    "scanning": "Scanning",
+    "scanError": "Port scanning failed",
+    "scanSuccess": "Scan completed successfully",
+    "protocol": {
+      "tcp": "TCP Only",
+      "udp": "UDP Only",
+      "both": "TCP & UDP"
+    },
+    "table": {
+      "port": "Port",
+      "protocol": "Protocol",
+      "status": "Status",
+      "process": "Process",
+      "pid": "PID",
+      "user": "User",
+      "actions": "Actions"
+    },
+    "killProcess": "Kill Process",
+    "killSuccess": "Process killed successfully",
+    "killError": "Failed to kill process",
+    "noPorts": "No open ports found",
+    "watchMode": "Watch Mode",
+    "stats": {
+      "total": "Total Open",
+      "tcp": "TCP Ports",
+      "udp": "UDP Ports",
+      "privileged": "Privileged (<1024)"
+    }
+  },
+  "ssh": {
+    "title": "SSH Manager",
+    "subtitle": "Manage SSH hosts, connect, test connectivity, import/export config",
+    "testAll": "Test All",
+    "testing": "Testing...",
+    "export": "Export",
+    "import": "Import",
+    "addHost": "Add Host",
+    "stats": {
+      "total": "Total",
+      "connected": "Connected",
+      "failed": "Failed"
+    },
+    "filterPlaceholder": "Filter hosts...",
+    "noHosts": "No SSH hosts found",
+    "addFirst": "Add your first host",
+    "form": {
+      "editTitle": "Edit Host",
+      "addTitle": "Add New Host",
+      "name": "Host Name *",
+      "hostname": "Hostname *",
+      "port": "Port",
+      "user": "User",
+      "identityFile": "Identity File",
+      "proxyJump": "ProxyJump",
+      "cancel": "Cancel",
+      "update": "Update",
+      "add": "Add Host"
+    },
+    "confirmDelete": "Delete Host",
+    "confirmDeleteDesc": "from SSH config? A backup will be created automatically.",
+    "labels": {
+      "host": "Host",
+      "port": "Port",
+      "user": "User",
+      "key": "Key",
+      "proxy": "Proxy"
+    },
+    "actions": {
+      "connect": "Connect",
+      "test": "Test",
+      "edit": "Edit",
+      "delete": "Delete"
+    }
+  },
+  "env": {
+    "title": "Env Manager",
+    "subtitle": "Manage environment variables, compare files, and validate configurations",
+    "tabs": {
+      "show": "Variables",
+      "compare": "Compare",
+      "validate": "Validate",
+      "sync": "Sync",
+      "init": "Generate"
+    },
+    "stats": {
+      "total": "Total Variables",
+      "secretsHidden": "Secrets Hidden",
+      "secretsRevealed": "Secrets Revealed"
+    },
+    "table": {
+      "key": "Key",
+      "value": "Value"
+    },
+    "filterPlaceholder": "Filter variables...",
+    "showSecrets": "Show Secrets",
+    "hideSecrets": "Hide Secrets",
+    "noVariables": "No variables found",
+    "compare": {
+      "status": "Status",
+      "inSync": "In Sync",
+      "different": "Different",
+      "noDiff": "No differences found between .env and .env.example"
+    },
+    "validate": {
+      "noIssues": "No issues found!",
+      "foundIssues": "Found {count} issue(s) in .env",
+      "table": {
+        "line": "Line",
+        "key": "Key",
+        "type": "Type",
+        "message": "Message"
+      }
+    },
+    "sync": {
+      "title": "Interactive Sync",
+      "desc": "Sync missing variables from .env.example to .env. You can set values for each missing variable.",
+      "notAvailable": "Sync feature will be available when differences are detected.",
+      "button": "Sync Variables"
+    },
+    "init": {
+      "title": "Generate .env from .env.example",
+      "desc": "Create a new .env file with all variables from .env.example. Set values for each variable below.",
+      "button": "Generate .env",
+      "forceOverwrite": "Force overwrite",
+      "enterValue": "Enter value..."
+    }
+  },
+  "nginx": {
+    "title": "Nginx Manager",
+    "subtitle": "Manage reverse proxy sites, SSL certificates, and configurations",
+    "templates": {
+      "reverseProxy": {
+        "label": "Reverse Proxy",
+        "desc": "Upstream proxy sites"
+      },
+      "staticSite": {
+        "label": "Static Site",
+        "desc": "Serve static files"
+      },
+      "phpFpm": {
+        "label": "PHP-FPM",
+        "desc": "PHP applications"
+      },
+      "loadBalancer": {
+        "label": "Load Balancer",
+        "desc": "Upstream load balancing"
+      },
+      "webSocket": {
+        "label": "WebSocket Proxy",
+        "desc": "WebSocket connections"
+      }
+    },
+    "stats": {
+      "total": "Total Sites",
+      "active": "Active",
+      "ssl": "SSL Enabled"
+    },
+    "searchPlaceholder": "Filter sites...",
+    "addSite": "Add Site",
+    "labels": {
+      "target": "Target",
+      "ssl": "SSL",
+      "sslValid": "Valid",
+      "sslExpired": "Expired",
+      "sslExpires": "Expires",
+      "config": "Config",
+      "domain": "Domain Name",
+      "port": "Target Port",
+      "enableSSL": "Enable Let's Encrypt SSL",
+      "status": "Status",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "actions": {
+      "enable": "Enable",
+      "disable": "Disable",
+      "test": "Test Config",
+      "reload": "Reload",
+      "edit": "Edit",
+      "delete": "Delete",
+      "viewConfig": "View Config"
+    },
+    "form": {
+      "addTitle": "Add New Site",
+      "editTitle": "Edit Site",
+      "cancel": "Cancel",
+      "save": "Save Site"
+    },
+    "tabs": {
+      "generate": "Generate",
+      "validate": "Validate",
+      "list": "List Configs"
+    },
+    "generate": {
+      "template": "Template",
+      "commonSettings": "Common Settings",
+      "proxySettings": "Proxy Settings",
+      "staticSettings": "Static Site Settings",
+      "phpSettings": "PHP-FPM Settings",
+      "loadBalancerSettings": "Load Balancer Settings",
+      "preview": "Preview",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "save": "Save"
+    },
+    "confirmDelete": "Delete Site",
+    "confirmDeleteDesc": "Are you sure you want to delete this site configuration? This action cannot be undone.",
+    "noSites": "No Nginx sites configured",
+    "addFirst": "Add your first site",
+    "testing": "Testing configuration...",
+    "reloading": "Reloading Nginx...",
+    "testSuccess": "Nginx configuration test passed",
+    "reloadSuccess": "Nginx reloaded successfully"
+  },
+  "docker": {
+    "title": "Docker Manager",
+    "subtitle": "Manage containers, view logs, and monitor resources",
+    "searchPlaceholder": "Filter containers...",
+    "status": {
+      "running": "Running",
+      "stopped": "Stopped",
+      "all": "All"
+    },
+    "actions": {
+      "start": "Start",
+      "stop": "Stop",
+      "restart": "Restart",
+      "logs": "Logs",
+      "remove": "Remove",
+      "inspect": "Inspect"
+    },
+    "table": {
+      "name": "Name/Image",
+      "state": "State",
+      "ports": "Ports",
+      "stats": "Stats",
+      "created": "Created"
+    },
+    "noContainers": "No containers found",
+    "confirmDelete": "Delete Container",
+    "confirmDeleteDesc": "Are you sure you want to remove container"
+  }
+}

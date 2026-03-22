@@ -16,6 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useI18n } from "../lib/i18n";
 import type { DockerContainer, PortEntry, SSHHost } from "../types";
 import type { TabId } from "./Sidebar";
 
@@ -34,14 +35,20 @@ export default function OverviewTab({
   envVarCount,
   onNavigate,
 }: OverviewTabProps) {
+  const { t } = useI18n();
   const [now, setNow] = useState("");
   useEffect(() => {
-    setNow(new Date().toLocaleString("vi-VN"));
+    const timeout = setTimeout(() => {
+      setNow(new Date().toLocaleString("vi-VN"));
+    }, 0);
     const interval = setInterval(
       () => setNow(new Date().toLocaleString("vi-VN")),
       1000,
     );
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
   }, []);
 
   const runningContainers = containers.filter(
@@ -65,7 +72,7 @@ export default function OverviewTab({
 
   const statCards = [
     {
-      title: "Docker Containers",
+      title: t("sidebar.docker"),
       value: containers.length.toString(),
       sub: `${runningContainers} running, ${stoppedContainers} stopped`,
       icon: <Container size={22} />,
@@ -74,7 +81,7 @@ export default function OverviewTab({
       tab: "docker" as TabId,
     },
     {
-      title: "Active Ports",
+      title: t("overview.openPorts"),
       value: ports.length.toString(),
       sub: `${tcpPorts} TCP, ${ports.length - tcpPorts} UDP`,
       icon: <Search size={22} />,
@@ -83,7 +90,7 @@ export default function OverviewTab({
       tab: "ports" as TabId,
     },
     {
-      title: "SSH Hosts",
+      title: t("overview.sshHosts"),
       value: sshHosts.length.toString(),
       sub: `${connectedHosts} reachable`,
       icon: <KeyRound size={22} />,
@@ -92,7 +99,7 @@ export default function OverviewTab({
       tab: "ssh" as TabId,
     },
     {
-      title: "Env Variables",
+      title: t("overview.envVars"),
       value: envVarCount.toString(),
       sub: "Across all .env files",
       icon: <FileCode size={22} />,
@@ -107,15 +114,17 @@ export default function OverviewTab({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Dashboard Overview</h2>
+          <h2 className="text-2xl font-bold text-[var(--color-foreground)]">
+            {t("overview.title")}
+          </h2>
           <p className="text-sm text-[var(--color-muted)] mt-1">
-            System status at a glance — {now}
+            {t("overview.subtitle")} — {now}
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-slow" />
-          <span className="text-xs text-emerald-400 font-medium">
-            System Online
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--success)]/10 rounded-full border border-[var(--success)]/20">
+          <div className="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse-slow" />
+          <span className="text-xs text-[var(--success)] font-medium">
+            {t("common.status")}
           </span>
         </div>
       </div>
@@ -133,7 +142,7 @@ export default function OverviewTab({
                 <p className="text-xs text-[var(--color-muted)] font-medium uppercase tracking-wider">
                   {card.title}
                 </p>
-                <p className="text-3xl font-bold text-white mt-1">
+                <p className="text-3xl font-bold text-[var(--color-foreground)] mt-1">
                   {card.value}
                 </p>
                 <p className="text-xs text-[var(--color-muted)] mt-1">
@@ -152,7 +161,7 @@ export default function OverviewTab({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Resource Gauges */}
         <div className="lg:col-span-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-[var(--color-foreground)] mb-4 flex items-center gap-2">
             <Activity size={16} className="text-[var(--color-primary)]" />
             Resource Usage
           </h3>
@@ -186,41 +195,41 @@ export default function OverviewTab({
 
         {/* Quick Actions */}
         <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <Zap size={16} className="text-amber-400" />
-            Quick Actions
+          <h3 className="text-sm font-semibold text-[var(--color-foreground)] mb-4 flex items-center gap-2">
+            <Zap size={16} className="text-[var(--warning)]" />
+            {t("overview.quickActions")}
           </h3>
           <div className="space-y-2">
             {[
               {
-                label: "Scan Ports",
+                label: t("overview.scanNow"),
                 icon: <Search size={14} />,
                 tab: "ports" as TabId,
-                color: "text-blue-400",
+                color: "text-[var(--info)]",
               },
               {
-                label: "Docker Dashboard",
+                label: t("sidebar.docker"),
                 icon: <Container size={14} />,
                 tab: "docker" as TabId,
-                color: "text-purple-400",
+                color: "text-[var(--primary)]",
               },
               {
-                label: "Manage SSH Hosts",
+                label: t("sidebar.ssh"),
                 icon: <KeyRound size={14} />,
                 tab: "ssh" as TabId,
-                color: "text-emerald-400",
+                color: "text-[var(--success)]",
               },
               {
-                label: "Env File Manager",
+                label: t("sidebar.env"),
                 icon: <FileCode size={14} />,
                 tab: "env" as TabId,
-                color: "text-amber-400",
+                color: "text-[var(--warning)]",
               },
               {
-                label: "Generate Nginx Config",
+                label: t("sidebar.nginx"),
                 icon: <Server size={14} />,
                 tab: "nginx" as TabId,
-                color: "text-rose-400",
+                color: "text-[var(--danger)]",
               },
             ].map((action) => (
               <button
@@ -229,7 +238,7 @@ export default function OverviewTab({
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[var(--color-background)] hover:bg-[var(--color-card-hover)] border border-transparent hover:border-[var(--color-border)] transition-all text-left group"
               >
                 <span className={action.color}>{action.icon}</span>
-                <span className="text-sm text-[var(--color-muted)] group-hover:text-white transition-colors">
+                <span className="text-sm text-[var(--color-muted)] group-hover:text-[var(--color-foreground)] transition-colors">
                   {action.label}
                 </span>
               </button>
@@ -243,15 +252,15 @@ export default function OverviewTab({
         {/* Recent Containers */}
         <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Container size={16} className="text-purple-400" />
-              Recent Containers
+            <h3 className="text-sm font-semibold text-[var(--color-foreground)] flex items-center gap-2">
+              <Container size={16} className="text-[var(--primary)]" />
+              {t("overview.activeContainers")}
             </h3>
             <button
               onClick={() => onNavigate("docker")}
               className="text-xs text-[var(--color-primary)] hover:text-[var(--color-primary-light)]"
             >
-              View All
+              {t("overview.viewAll")}
             </button>
           </div>
           {containers.length === 0 ? (
@@ -267,17 +276,19 @@ export default function OverviewTab({
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-2 h-2 rounded-full ${c.state === "running" ? "bg-emerald-400" : "bg-red-400"}`}
+                      className={`w-2 h-2 rounded-full ${c.state === "running" ? "bg-[var(--success)]" : "bg-[var(--danger)]"}`}
                     />
                     <div>
-                      <p className="text-sm text-white font-medium">{c.name}</p>
+                      <p className="text-sm text-[var(--color-foreground)] font-medium">
+                        {c.name}
+                      </p>
                       <p className="text-[10px] text-[var(--color-muted)]">
                         {c.image}
                       </p>
                     </div>
                   </div>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${c.state === "running" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}
+                    className={`text-xs px-2 py-0.5 rounded-full ${c.state === "running" ? "bg-[var(--success)]/10 text-[var(--success)]" : "bg-[var(--danger)]/10 text-[var(--danger)]"}`}
                   >
                     {c.state}
                   </span>
@@ -290,15 +301,15 @@ export default function OverviewTab({
         {/* Active Ports */}
         <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Search size={16} className="text-blue-400" />
-              Active Ports
+            <h3 className="text-sm font-semibold text-[var(--color-foreground)] flex items-center gap-2">
+              <Search size={16} className="text-[var(--info)]" />
+              {t("overview.openPorts")}
             </h3>
             <button
               onClick={() => onNavigate("ports")}
               className="text-xs text-[var(--color-primary)] hover:text-[var(--color-primary-light)]"
             >
-              View All
+              {t("overview.viewAll")}
             </button>
           </div>
           {ports.length === 0 ? (
@@ -314,12 +325,14 @@ export default function OverviewTab({
                 >
                   <div className="flex items-center gap-3">
                     <span
-                      className={`text-xs px-1.5 py-0.5 rounded font-mono ${p.protocol === "tcp" ? "bg-blue-500/10 text-blue-400" : "bg-amber-500/10 text-amber-400"}`}
+                      className={`text-xs px-1.5 py-0.5 rounded font-mono ${p.protocol === "tcp" ? "bg-[var(--info)]/10 text-[var(--info)]" : "bg-[var(--warning)]/10 text-[var(--warning)]"}`}
                     >
                       {p.protocol.toUpperCase()}
                     </span>
                     <div>
-                      <p className="text-sm text-white font-mono">:{p.port}</p>
+                      <p className="text-sm text-[var(--color-foreground)] font-mono">
+                        :{p.port}
+                      </p>
                       <p className="text-[10px] text-[var(--color-muted)]">
                         {p.process}
                       </p>
@@ -368,10 +381,10 @@ function ResourceGauge({
   color: string;
 }) {
   const colorMap: Record<string, { bar: string; text: string }> = {
-    purple: { bar: "bg-purple-500", text: "text-purple-400" },
-    blue: { bar: "bg-blue-500", text: "text-blue-400" },
-    emerald: { bar: "bg-emerald-500", text: "text-emerald-400" },
-    amber: { bar: "bg-amber-500", text: "text-amber-400" },
+    purple: { bar: "bg-[var(--primary)]", text: "text-[var(--primary)]" },
+    blue: { bar: "bg-[var(--info)]", text: "text-[var(--info)]" },
+    emerald: { bar: "bg-[var(--success)]", text: "text-[var(--success)]" },
+    amber: { bar: "bg-[var(--warning)]", text: "text-[var(--warning)]" },
   };
   const c = colorMap[color] || colorMap.purple;
   const clamped = Math.min(Math.max(value, 0), 100);
